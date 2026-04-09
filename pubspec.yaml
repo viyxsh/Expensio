@@ -1,0 +1,57 @@
+name: expensio
+description: Intelligent expense tracking and group bill splitting app.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Local storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # OCR
+  google_mlkit_text_recognition: ^0.11.0
+
+  # Image picking
+  image_picker: ^1.0.7
+
+  # HTTP for Gemini API
+  http: ^1.2.0
+
+  # UUID generation
+  uuid: ^4.3.3
+
+  # Notifications
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+  flutter_timezone: ^5.0.0
+
+  # Export & share
+  share_plus: ^10.1.4
+  path_provider: ^2.1.4
+
+  # Environment variables
+  flutter_dotenv: ^5.2.1
+
+  # UI
+  cupertino_icons: ^1.0.6
+  intl: ^0.19.0
+  google_fonts: ^6.2.1
+  fl_chart: ^0.69.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.8
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
