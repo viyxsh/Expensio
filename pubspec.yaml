@@ -10,6 +10,12 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Firebase (multi-device sync — Phase 1). After adding these, run:
+  #   flutter pub get  &&  flutterfire configure   (see SETUP.md)
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+
   # Local storage
   hive: ^2.2.3
   hive_flutter: ^1.1.0

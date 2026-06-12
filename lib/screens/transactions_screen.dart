@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/expense_model.dart';
-import '../models/group_model.dart';
-import '../models/user_model.dart';
-import '../services/hive_service.dart';
+import '../services/app_settings.dart';
+import '../services/services.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 import 'add_personal_expense_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -27,11 +26,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Transactions')),
-      body: ValueListenableBuilder(
-        valueListenable: Hive.box<ExpenseModel>('expenses').listenable(),
-        builder: (context, _, __) {
-          final all = HiveService.getAllExpenses()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      body: ListenableBuilder(
+        listenable: Services.state,
+        builder: (context, _) {
+          final all = Services.state.getAllExpenses();
 
           final filtered = _filterCategory == 'All'
               ? all
@@ -180,8 +178,8 @@ class _ChartsSectionState extends State<_ChartsSection> {
   Widget build(BuildContext context) {
     if (widget.expenses.isEmpty) return const SizedBox.shrink();
 
-    // Category breakdown for pie chart
-    final catTotals = <String, double>{};
+    // Category breakdown for pie chart (totals in cents)
+    final catTotals = <String, int>{};
     for (final e in widget.expenses) {
       catTotals[e.category] =
           (catTotals[e.category] ?? 0) + e.totalAmount;
@@ -189,20 +187,20 @@ class _ChartsSectionState extends State<_ChartsSection> {
     final sorted = catTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final total =
-    widget.expenses.fold<double>(0, (s, e) => s + e.totalAmount);
+    widget.expenses.fold<int>(0, (s, e) => s + e.totalAmount);
 
-    // Last 7 days bar chart
+    // Last 7 days bar chart (amounts in major units for the axis)
     final now = DateTime.now();
     final barData = List.generate(7, (i) {
       final day = now.subtract(Duration(days: 6 - i));
       final dayStart = DateTime(day.year, day.month, day.day);
       final dayEnd = dayStart.add(const Duration(days: 1));
-      final sum = widget.expenses
+      final sumCents = widget.expenses
           .where((e) =>
       e.createdAt.isAfter(dayStart) &&
           e.createdAt.isBefore(dayEnd))
-          .fold<double>(0, (s, e) => s + e.totalAmount);
-      return _DayBar(day: dayStart, amount: sum);
+          .fold<int>(0, (s, e) => s + e.totalAmount);
+      return _DayBar(day: dayStart, amount: Money.toMajor(sumCents));
     });
     final maxBar =
     barData.map((d) => d.amount).fold<double>(1, (a, b) => a > b ? a : b);
@@ -218,7 +216,8 @@ class _ChartsSectionState extends State<_ChartsSection> {
               Expanded(
                 child: _SummaryTile(
                   label: 'Total Spent',
-                  value: 'Rs ${_compact(total)}',
+                  value:
+                      '${AppSettings.currencySymbol} ${_compact(Money.toMajor(total))}',
                   icon: Icons.payments_outlined,
                 ),
               ),
@@ -336,7 +335,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
                             if (rod.toY == 0) return null;
                             return BarTooltipItem(
-                              'Rs ${rod.toY.toStringAsFixed(0)}',
+                              '${AppSettings.currencySymbol} ${rod.toY.toStringAsFixed(0)}',
                               const TextStyle(
                                 color: AppTheme.surface,
                                 fontSize: 11,
@@ -405,7 +404,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                               final pct = e.value.value / total * 100;
                               return PieChartSectionData(
                                 color: AppTheme.categoryColor(e.value.key),
-                                value: e.value.value,
+                                value: e.value.value.toDouble(),
                                 title: isTouched
                                     ? '${pct.toStringAsFixed(0)}%'
                                     : '',
@@ -621,20 +620,13 @@ class _TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final payer = HiveService.getUserById(expense.payerId);
-    final group = HiveService.getGroupById(expense.groupId);
+    final payer = Services.state.getUserById(expense.payerId);
+    final group = Services.state.getGroupById(expense.groupId);
     final payerName = payer?.name ?? 'Unknown';
     final groupName = group?.name ?? '';
 
     final participantCount = expense.participantIds.length;
     final isGroup = !expense.isPersonal && participantCount > 1;
-
-    final displayAmount = isGroup
-        ? (expense.splitMap.isNotEmpty
-        ? expense.splitMap.values.fold<double>(0, (s, v) => s + v) /
-        expense.splitMap.length
-        : expense.totalAmount / participantCount)
-        : expense.totalAmount;
 
     return Dismissible(
       key: Key(expense.id),
@@ -664,7 +656,7 @@ class _TransactionTile extends StatelessWidget {
         );
       },
       onDismissed: (_) async {
-        await HiveService.deleteExpense(expense.id);
+        await Services.state.deleteExpense(expense.id);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Transaction deleted")),
@@ -731,7 +723,7 @@ class _TransactionTile extends StatelessWidget {
                     const SizedBox(width: 6),
                     TagPill(
                       label:
-                      'Rs ${expense.totalAmount.toStringAsFixed(0)} total',
+                      '${Money.withSymbol(expense.totalAmount, decimals: 0)} total',
                       color: AppTheme.primary,
                     ),
                   ],
@@ -766,7 +758,7 @@ class _TransactionTile extends StatelessWidget {
                 );
 
                 if (confirm == true) {
-                  await HiveService.deleteExpense(expense.id);
+                  await Services.state.deleteExpense(expense.id);
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Transaction deleted")),

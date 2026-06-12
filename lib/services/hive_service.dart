@@ -4,11 +4,14 @@ import '../models/user_model.dart';
 import '../models/group_model.dart';
 import '../models/expense_model.dart';
 import '../models/bill_item_model.dart';
+import '../models/settlement_model.dart';
+import '../data/balances.dart';
 
 class HiveService {
   static const String _usersBox = 'users';
   static const String _groupsBox = 'groups';
   static const String _expensesBox = 'expenses';
+  static const String _settlementsBox = 'settlements';
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -18,11 +21,13 @@ class HiveService {
     Hive.registerAdapter(BillItemAdapter());
     Hive.registerAdapter(ExpenseModelAdapter());
     Hive.registerAdapter(GroupModelAdapter());
+    Hive.registerAdapter(SettlementModelAdapter());
 
     // Open boxes
     await Hive.openBox<UserModel>(_usersBox);
     await Hive.openBox<GroupModel>(_groupsBox);
     await Hive.openBox<ExpenseModel>(_expensesBox);
+    await Hive.openBox<SettlementModel>(_settlementsBox);
     await Hive.openBox('settings');
   }
 
@@ -74,6 +79,14 @@ class HiveService {
     for (final eid in toDelete) {
       await _expenses.delete(eid);
     }
+    // And any recorded settlements
+    final settlementsToDelete = _settlements.values
+        .where((s) => s.groupId == id)
+        .map((s) => s.id)
+        .toList();
+    for (final sid in settlementsToDelete) {
+      await _settlements.delete(sid);
+    }
   }
 
   // Expenses 
@@ -97,41 +110,31 @@ class HiveService {
     await _expenses.put(expense.id, expense);
   }
 
-  // Balances 
+  // Settlements (recorded real-world payments)
 
-  /// Returns net balance per userId for a group.
-  /// +ve = they are owed money, -ve = they owe money.
-  static Map<String, double> computeBalances(String groupId) {
-    final expenses = getExpensesByGroup(groupId);
-    final Map<String, double> balances = {};
+  static Box<SettlementModel> get _settlements =>
+      Hive.box<SettlementModel>(_settlementsBox);
 
-    for (final expense in expenses) {
-      if (expense.isPersonal) continue;
-
-      final payerId = expense.payerId;
-
-      if (expense.splitMap.isNotEmpty) {
-        // Use explicit split map
-        for (final entry in expense.splitMap.entries) {
-          final userId = entry.key;
-          final owes = entry.value;
-          if (userId == payerId) continue;
-          balances[payerId] = (balances[payerId] ?? 0) + owes;
-          balances[userId] = (balances[userId] ?? 0) - owes;
-        }
-      } else {
-        // Equal split among participants
-        final participants = expense.participantIds;
-        if (participants.isEmpty) continue;
-        final share = expense.totalAmount / participants.length;
-        for (final uid in participants) {
-          if (uid == payerId) continue;
-          balances[payerId] = (balances[payerId] ?? 0) + share;
-          balances[uid] = (balances[uid] ?? 0) - share;
-        }
-      }
-    }
-
-    return balances;
+  static Future<void> saveSettlement(SettlementModel settlement) async {
+    await _settlements.put(settlement.id, settlement);
   }
+
+  static List<SettlementModel> getSettlementsByGroup(String groupId) =>
+      _settlements.values.where((s) => s.groupId == groupId).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  static Future<void> deleteSettlement(String id) async {
+    await _settlements.delete(id);
+  }
+
+  // Balances
+
+  /// Returns net balance per userId for a group, in minor units (cents).
+  /// Delegates to the shared pure [computeBalances] so every repository and the
+  /// tests share one implementation.
+  static Map<String, int> computeBalances(String groupId) =>
+      computeBalancesFrom(
+        getExpensesByGroup(groupId),
+        getSettlementsByGroup(groupId),
+      );
 }

@@ -1,11 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group_model.dart';
 import '../models/expense_model.dart';
 import '../models/user_model.dart';
-import '../services/hive_service.dart';
+import '../services/services.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 import 'add_expense_screen.dart';
 import 'bill_scan_screen.dart';
 import 'settlement_screen.dart';
@@ -31,15 +30,15 @@ class GroupDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ValueListenableBuilder(
-        valueListenable: Hive.box<ExpenseModel>('expenses').listenable(),
-        builder: (context, _, __) {
-          final expenses = HiveService.getExpensesByGroup(group.id);
+      body: ListenableBuilder(
+        listenable: Services.state,
+        builder: (context, _) {
+          final expenses = Services.state.getExpensesByGroup(group.id);
           final members = group.memberIds
-              .map(HiveService.getUserById)
+              .map(Services.state.getUserById)
               .whereType<UserModel>()
               .toList();
-          final balances = HiveService.computeBalances(group.id);
+          final balances = Services.state.computeBalances(group.id);
 
           return CustomScrollView(
             slivers: [
@@ -73,7 +72,7 @@ class GroupDetailScreen extends StatelessWidget {
                           expense: expenses[i],
                           members: members,
                           onDelete: () =>
-                              HiveService.deleteExpense(expenses[i].id),
+                              Services.state.deleteExpense(expenses[i].id),
                         ),
                       ),
                       childCount: expenses.length,
@@ -89,13 +88,13 @@ class GroupDetailScreen extends StatelessWidget {
 
   Widget _buildSummaryCards(List<ExpenseModel> expenses) {
     final groupExp = expenses.where((e) => !e.isPersonal).toList();
-    final total = groupExp.fold<double>(0, (s, e) => s + e.totalAmount);
+    final total = groupExp.fold<int>(0, (s, e) => s + e.totalAmount);
     return Row(
       children: [
         Expanded(
           child: InfoCard(
             label: 'Total Spent',
-            value: 'Rs ${total.toStringAsFixed(0)}',
+            value: Money.withSymbol(total, decimals: 0),
             icon: Icons.payments_outlined,
             valueColor: AppTheme.primary,
           ),
@@ -121,7 +120,7 @@ class GroupDetailScreen extends StatelessWidget {
   }
 
   Widget _buildMembersSection(
-      List<UserModel> members, Map<String, double> balances) {
+      List<UserModel> members, Map<String, int> balances) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -150,7 +149,7 @@ class GroupDetailScreen extends StatelessWidget {
                     ),
                     title: Text(m.name,
                         style: const TextStyle(fontWeight: FontWeight.w500)),
-                    trailing: balance.abs() < 0.01
+                    trailing: balance == 0
                         ? Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
@@ -206,7 +205,7 @@ class GroupDetailScreen extends StatelessWidget {
 }
 
 class _BalanceBadge extends StatelessWidget {
-  final double balance;
+  final int balance;
   const _BalanceBadge({required this.balance});
 
   @override
@@ -221,7 +220,7 @@ class _BalanceBadge extends StatelessWidget {
             style: const TextStyle(
                 fontSize: 11, color: AppTheme.textSecondary)),
         Text(
-          'Rs ${balance.abs().toStringAsFixed(2)}',
+          Money.withSymbol(balance.abs()),
           style: TextStyle(
               fontSize: 14, fontWeight: FontWeight.w700, color: color),
         ),
@@ -313,7 +312,7 @@ class _ExpenseCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Rs ${expense.totalAmount.toStringAsFixed(2)}',
+                Money.withSymbol(expense.totalAmount),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,

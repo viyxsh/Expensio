@@ -19,7 +19,7 @@ class ExpenseModelAdapter extends TypeAdapter<ExpenseModel> {
     return ExpenseModel(
       id: fields[0] as String,
       title: fields[1] as String,
-      totalAmount: fields[2] as double,
+      totalAmount: fields[2] as int,
       payerId: fields[3] as String,
       participantIds: (fields[4] as List).cast<String>(),
       groupId: fields[5] as String,
@@ -27,7 +27,7 @@ class ExpenseModelAdapter extends TypeAdapter<ExpenseModel> {
       items: (fields[7] as List).cast<BillItem>(),
       category: fields[8] as String,
       isPersonal: fields[9] as bool,
-      splitMap: (fields[10] as Map).cast<String, double>(),
+      splitMap: (fields[10] as Map).cast<String, int>(),
     );
   }
 

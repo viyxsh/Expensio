@@ -1,12 +1,12 @@
 import 'dart:math';
 
-/// Represents a single settlement transaction
+/// Represents a single settlement transaction. [amount] is in minor units (cents).
 class Settlement {
   final String fromId;
   final String fromName;
   final String toId;
   final String toName;
-  final double amount;
+  final int amount;
 
   const Settlement({
     required this.fromId,
@@ -17,60 +17,66 @@ class Settlement {
   });
 
   @override
-  String toString() => '$fromName pays $toName ${amount.toStringAsFixed(2)}';
+  String toString() => '$fromName pays $toName $amount';
 }
 
 class SettlementService {
-  static const double _epsilon = 0.01; // Rounding threshold
+  /// Groups larger than this skip the (exponential) optimal search and use the
+  /// greedy result directly. Backtracking is worst-case factorial, so the bound
+  /// is kept conservative to avoid janking the UI thread.
+  static const int _optimalMaxMembers = 8;
 
-  /// Main entry point. Computes minimal transactions from net balances.
+  /// Hard cap on backtracking node visits. If exceeded, we bail out and keep the
+  /// best complete solution found so far (falling back to greedy when none beats it).
+  static const int _maxBacktrackSteps = 200000;
+
+  /// Main entry point. Computes minimal transactions from net balances (cents).
   ///
   /// Step 1: Compute net balance per user (done externally via HiveService).
   /// Step 2: Run greedy algorithm O(n log n) for any group size.
-  /// Step 3: For groups <= 10, run optimal backtracking to minimize transaction count.
+  /// Step 3: For small groups, run capped optimal backtracking to minimize count.
   static List<Settlement> computeSettlements(
-      Map<String, double> balances,
-      Map<String, String> userNames, // userId -> name
-      ) {
-    // Remove near-zero balances
-    final cleanBalances = Map<String, double>.fromEntries(
-      balances.entries.where((e) => e.value.abs() > _epsilon),
+    Map<String, int> balances,
+    Map<String, String> userNames, // userId -> name
+  ) {
+    // Remove zero balances.
+    final cleanBalances = Map<String, int>.fromEntries(
+      balances.entries.where((e) => e.value != 0),
     );
 
     if (cleanBalances.isEmpty) return [];
 
     final greedy = _greedySettle(cleanBalances, userNames);
 
-    // For small groups, try to find an optimal (fewer transactions) solution
-    if (cleanBalances.length <= 10) {
-      final optimal = _optimalSettle(cleanBalances, userNames);
-      // Return whichever has fewer transactions
+    // For small groups, try to find an optimal (fewer transactions) solution.
+    if (cleanBalances.length <= _optimalMaxMembers) {
+      final optimal = _optimalSettle(cleanBalances, userNames, greedy);
       if (optimal.length < greedy.length) return optimal;
     }
 
     return greedy;
   }
 
-  // Greedy Algorithm 
-  // Match largest debtor with largest creditor repeatedly in O(n log n)
+  // Greedy Algorithm
+  // Match largest debtor with largest creditor repeatedly in O(n log n).
 
   static List<Settlement> _greedySettle(
-      Map<String, double> balances,
-      Map<String, String> userNames,
-      ) {
+    Map<String, int> balances,
+    Map<String, String> userNames,
+  ) {
     final List<Settlement> settlements = [];
 
-    // Separate into creditors (+) and debtors (-)
+    // Separate into creditors (+) and debtors (-).
     final creditors = balances.entries
-        .where((e) => e.value > _epsilon)
+        .where((e) => e.value > 0)
         .map((e) => _BalanceEntry(e.key, e.value))
         .toList();
     final debtors = balances.entries
-        .where((e) => e.value < -_epsilon)
+        .where((e) => e.value < 0)
         .map((e) => _BalanceEntry(e.key, e.value.abs()))
         .toList();
 
-    // Sort descending by amount
+    // Sort descending by amount.
     creditors.sort((a, b) => b.amount.compareTo(a.amount));
     debtors.sort((a, b) => b.amount.compareTo(a.amount));
 
@@ -81,57 +87,61 @@ class SettlementService {
 
       final amount = min(creditor.amount, debtor.amount);
 
-      if (amount > _epsilon) {
+      if (amount > 0) {
         settlements.add(Settlement(
           fromId: debtor.userId,
           fromName: userNames[debtor.userId] ?? debtor.userId,
           toId: creditor.userId,
           toName: userNames[creditor.userId] ?? creditor.userId,
-          amount: _round(amount),
+          amount: amount,
         ));
       }
 
       creditor.amount -= amount;
       debtor.amount -= amount;
 
-      if (creditor.amount <= _epsilon) ci++;
-      if (debtor.amount <= _epsilon) di++;
+      if (creditor.amount <= 0) ci++;
+      if (debtor.amount <= 0) di++;
     }
 
     return settlements;
   }
 
-  // Optimal Algorithm (Backtracking) 
-  // Finds minimum number of transactions for groups <= 10
-  // Uses subset-sum detection: if a subset sums to zero, it is self-contained
+  // Optimal Algorithm (Backtracking)
+  // Finds minimum number of transactions for small groups, capped for safety.
 
   static List<Settlement> _optimalSettle(
-      Map<String, double> balances,
-      Map<String, String> userNames,
-      ) {
-    // Build list of non zero balances (+ve = creditor, -ve = debtor)
+    Map<String, int> balances,
+    Map<String, String> userNames,
+    List<Settlement> greedyFallback,
+  ) {
     final List<_BalanceEntry> entries = balances.entries
         .map((e) => _BalanceEntry(e.key, e.value))
         .toList();
 
     final List<List<Settlement>> result = [[]];
-    final bestCount = [entries.length]; // Upper bound
+    // Seed the upper bound with greedy so we only keep strictly better solutions.
+    final bestCount = [greedyFallback.length];
+    final steps = [0];
 
-    _backtrack(entries, userNames, 0, [], result, bestCount);
+    _backtrack(entries, userNames, 0, [], result, bestCount, steps);
 
-    return result[0].isEmpty ? _greedySettle(balances, userNames) : result[0];
+    return result[0].isEmpty ? greedyFallback : result[0];
   }
 
   static void _backtrack(
-      List<_BalanceEntry> entries,
-      Map<String, String> userNames,
-      int startIdx,
-      List<Settlement> currentSettlements,
-      List<List<Settlement>> best,
-      List<int> bestCount,
-      ) {
-    // Skip entries that are already settled
-    while (startIdx < entries.length && entries[startIdx].amount.abs() <= _epsilon) {
+    List<_BalanceEntry> entries,
+    Map<String, String> userNames,
+    int startIdx,
+    List<Settlement> currentSettlements,
+    List<List<Settlement>> best,
+    List<int> bestCount,
+    List<int> steps,
+  ) {
+    if (steps[0]++ > _maxBacktrackSteps) return; // Bail; keep best found so far.
+
+    // Skip entries that are already settled.
+    while (startIdx < entries.length && entries[startIdx].amount == 0) {
       startIdx++;
     }
 
@@ -143,50 +153,48 @@ class SettlementService {
       return;
     }
 
-    // Prune: current path already worse than best known
+    // Prune: current path already worse than best known.
     if (currentSettlements.length >= bestCount[0]) return;
 
     final entry = entries[startIdx];
 
     for (int j = startIdx + 1; j < entries.length; j++) {
       final other = entries[j];
-      // One must owe and other must be owed
+      // One must owe and other must be owed.
       if (entry.amount * other.amount >= 0) continue;
 
       final payer = entry.amount < 0 ? entry : other;
       final payee = entry.amount > 0 ? entry : other;
 
       final transferAmount = min(payer.amount.abs(), payee.amount.abs());
-      if (transferAmount <= _epsilon) continue;
+      if (transferAmount <= 0) continue;
 
       final settlement = Settlement(
         fromId: payer.userId,
         fromName: userNames[payer.userId] ?? payer.userId,
         toId: payee.userId,
         toName: userNames[payee.userId] ?? payee.userId,
-        amount: _round(transferAmount),
+        amount: transferAmount,
       );
 
-      // Apply
+      // Apply.
       payer.amount += transferAmount;
       payee.amount -= transferAmount;
       currentSettlements.add(settlement);
 
-      _backtrack(entries, userNames, startIdx + 1, currentSettlements, best, bestCount);
+      _backtrack(entries, userNames, startIdx + 1, currentSettlements, best,
+          bestCount, steps);
 
-      // Undo
+      // Undo.
       currentSettlements.removeLast();
       payer.amount -= transferAmount;
       payee.amount += transferAmount;
     }
   }
-
-  static double _round(double value) =>
-      (value * 100).round() / 100;
 }
 
 class _BalanceEntry {
   final String userId;
-  double amount;
+  int amount;
   _BalanceEntry(this.userId, this.amount);
 }

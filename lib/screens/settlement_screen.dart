@@ -1,24 +1,111 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
-import '../services/hive_service.dart';
+import '../models/settlement_model.dart';
+import '../services/services.dart';
 import '../services/settlement_service.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 
-class SettlementScreen extends StatelessWidget {
+class SettlementScreen extends StatefulWidget {
   final GroupModel group;
   const SettlementScreen({super.key, required this.group});
 
   @override
+  State<SettlementScreen> createState() => _SettlementScreenState();
+}
+
+class _SettlementScreenState extends State<SettlementScreen> {
+  final _uuid = const Uuid();
+
+  GroupModel get group => widget.group;
+
+  @override
+  void initState() {
+    super.initState();
+    Services.state.addListener(_onState);
+  }
+
+  @override
+  void dispose() {
+    Services.state.removeListener(_onState);
+    super.dispose();
+  }
+
+  void _onState() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _recordPayment(Settlement s) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Record Payment'),
+        content: Text(
+            'Mark ${s.fromName} → ${s.toName} of ${Money.withSymbol(s.amount)} as paid?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Mark Paid')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    await Services.state.saveSettlement(SettlementModel(
+      id: _uuid.v4(),
+      groupId: group.id,
+      fromId: s.fromId,
+      toId: s.toId,
+      amountCents: s.amount,
+      createdAt: DateTime.now(),
+    ));
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Payment recorded')));
+    }
+  }
+
+  Future<void> _undoPayment(SettlementModel s, String label) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Undo Payment'),
+        content: Text('Remove the recorded payment "$label"?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    await Services.state.deleteSettlement(s.id);
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final members = group.memberIds
-        .map(HiveService.getUserById)
+        .map(Services.state.getUserById)
         .whereType<UserModel>()
         .toList();
-    final balances = HiveService.computeBalances(group.id);
+    final balances = Services.state.computeBalances(group.id);
     final userNames = {for (final m in members) m.id: m.name};
     final settlements =
     SettlementService.computeSettlements(balances, userNames);
+    final recorded = Services.state.getSettlementsByGroup(group.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -70,9 +157,19 @@ class SettlementScreen extends StatelessWidget {
             ...settlements.asMap().entries.map(
                   (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _SettlementCard(settlement: e.value),
+                child: _SettlementCard(
+                  settlement: e.value,
+                  onMarkPaid: () => _recordPayment(e.value),
+                ),
               ),
             ),
+
+          if (recorded.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const SectionHeader(title: 'Recorded Payments'),
+            const SizedBox(height: 8),
+            _buildRecordedCard(recorded, userNames),
+          ],
 
           const SizedBox(height: 20),
           _buildAlgorithmNote(settlements.length),
@@ -82,11 +179,54 @@ class SettlementScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildRecordedCard(
+      List<SettlementModel> recorded, Map<String, String> userNames) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.divider),
+      ),
+      child: Column(
+        children: recorded.asMap().entries.map((e) {
+          final i = e.key;
+          final s = e.value;
+          final fromName = userNames[s.fromId] ?? s.fromId;
+          final toName = userNames[s.toId] ?? s.toId;
+          final label = '$fromName → $toName';
+          return Column(
+            children: [
+              if (i > 0)
+                const Divider(height: 1, indent: 16, color: AppTheme.divider),
+              ListTile(
+                leading: const Icon(Icons.check_circle,
+                    color: AppTheme.successColor, size: 20),
+                title: Text(label,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textPrimary)),
+                subtitle: Text(Money.withSymbol(s.amountCents),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.textSecondary)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.undo,
+                      size: 18, color: AppTheme.textSecondary),
+                  onPressed: () => _undoPayment(s, label),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildSummaryBanner(
-      Map<String, double> balances, List<Settlement> settlements) {
+      Map<String, int> balances, List<Settlement> settlements) {
     final totalOwed = balances.values
         .where((v) => v > 0)
-        .fold<double>(0, (s, v) => s + v);
+        .fold<int>(0, (s, v) => s + v);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -104,7 +244,7 @@ class SettlementScreen extends StatelessWidget {
                   fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Text(
-            'Rs ${totalOwed.toStringAsFixed(2)}',
+            Money.withSymbol(totalOwed),
             style: const TextStyle(
               color: AppTheme.textPrimary,
               fontSize: 34,
@@ -133,7 +273,7 @@ class SettlementScreen extends StatelessWidget {
   }
 
   Widget _buildBalancesCard(
-      Map<String, double> balances, Map<String, String> userNames) {
+      Map<String, int> balances, Map<String, String> userNames) {
     final sorted = balances.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -150,7 +290,7 @@ class SettlementScreen extends StatelessWidget {
           final balance = e.value.value;
           final name = userNames[userId] ?? userId;
           final isPos = balance > 0;
-          final isZero = balance.abs() < 0.01;
+          final isZero = balance == 0;
 
           return Column(
             children: [
@@ -188,7 +328,7 @@ class SettlementScreen extends StatelessWidget {
                     ? const Icon(Icons.check_circle,
                     color: AppTheme.successColor, size: 20)
                     : Text(
-                  '${isPos ? '+' : '-'}Rs ${balance.abs().toStringAsFixed(2)}',
+                  '${isPos ? '+' : '-'}${Money.withSymbol(balance.abs())}',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -281,7 +421,7 @@ class SettlementScreen extends StatelessWidget {
                   desc: 'Calculate total owed/owing per person.'),
               _InfoStep(n: '2', title: 'Greedy (O n log n)',
                   desc: 'Match largest debtor with largest creditor repeatedly.'),
-              _InfoStep(n: '3', title: 'Optimal (≤10 members)',
+              _InfoStep(n: '3', title: 'Optimal (≤8 members)',
                   desc: 'Backtracking finds the absolute minimum transactions.'),
               _InfoStep(n: '4', title: 'Best wins',
                   desc: 'Returns whichever approach gives fewer payments.'),
@@ -319,7 +459,8 @@ class _BannerStat extends StatelessWidget {
 
 class _SettlementCard extends StatelessWidget {
   final Settlement settlement;
-  const _SettlementCard({required this.settlement});
+  final VoidCallback? onMarkPaid;
+  const _SettlementCard({required this.settlement, this.onMarkPaid});
 
   @override
   Widget build(BuildContext context) {
@@ -330,7 +471,9 @@ class _SettlementCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.divider),
       ),
-      child: Row(
+      child: Column(
+        children: [
+      Row(
         children: [
           // From
           Expanded(
@@ -363,7 +506,7 @@ class _SettlementCard extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  'Rs ${settlement.amount.toStringAsFixed(2)}',
+                  Money.withSymbol(settlement.amount),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -411,6 +554,19 @@ class _SettlementCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+      if (onMarkPaid != null) ...[
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onMarkPaid,
+            icon: const Icon(Icons.check, size: 16),
+            label: const Text('Mark as Paid'),
+          ),
+        ),
+      ],
         ],
       ),
     );

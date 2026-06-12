@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
-import '../services/hive_service.dart';
+import '../services/services.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 import 'group_detail_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
@@ -21,9 +21,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   void _showGroupSheet({GroupModel? existing}) {
     final isEdit = existing != null;
+    // The creator ("You") is an implicit member — don't show them as an
+    // editable/removable row.
     final existingMembers = isEdit
         ? existing.memberIds
-        .map(HiveService.getUserById)
+        .where((id) => id != Services.currentUserId)
+        .map(Services.state.getUserById)
         .whereType<UserModel>()
         .toList()
         : <UserModel>[];
@@ -173,13 +176,15 @@ class _GroupsScreenState extends State<GroupsScreen> {
     if (name.isEmpty) { _snack('Group name is required'); return; }
     if (memberNames.isEmpty) { _snack('Add at least one member'); return; }
 
-    final ids = <String>[];
+    // The creator is always the first member, keyed by their auth uid, so the
+    // group syncs back to them and the security rules permit the write.
+    final ids = <String>[Services.currentUserId];
     for (final n in memberNames) {
       final u = UserModel(id: _uuid.v4(), name: n);
-      await HiveService.saveUser(u);
+      await Services.state.saveUser(u);
       ids.add(u.id);
     }
-    await HiveService.saveGroup(GroupModel(
+    await Services.state.saveGroup(GroupModel(
       id: _uuid.v4(),
       name: name,
       memberIds: ids,
@@ -198,22 +203,24 @@ class _GroupsScreenState extends State<GroupsScreen> {
       ) async {
     if (name.isEmpty) { _snack('Group name is required'); return; }
 
-    final ids = <String>[];
+    // The creator ("You") is always kept as a member (kept out of the editable
+    // rows), so re-add their id up front.
+    final ids = <String>[Services.currentUserId];
     for (final (ctrl, existingId) in memberEntries) {
       final memberName = ctrl.text.trim();
       if (memberName.isEmpty) continue;
       if (existingId != null) {
         // Update existing user name
-        final user = HiveService.getUserById(existingId);
+        final user = Services.state.getUserById(existingId);
         if (user != null) {
           user.name = memberName;
-          await HiveService.saveUser(user);
+          await Services.state.saveUser(user);
           ids.add(existingId);
         }
       } else {
         // New member
         final u = UserModel(id: _uuid.v4(), name: memberName);
-        await HiveService.saveUser(u);
+        await Services.state.saveUser(u);
         ids.add(u.id);
       }
     }
@@ -223,13 +230,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
         .where((id) => !ids.contains(id))
         .toList();
     for (final id in removed) {
-      await HiveService.deleteUser(id);
+      await Services.state.deleteUser(id);
     }
 
     group.name = name;
     group.description = desc;
     group.memberIds = ids;
-    await HiveService.saveGroup(group);
+    await Services.state.saveGroup(group);
     if (mounted) Navigator.pop(sheetCtx);
   }
 
@@ -252,7 +259,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         ],
       ),
     );
-    if (ok == true) await HiveService.deleteGroup(groupId);
+    if (ok == true) await Services.state.deleteGroup(groupId);
   }
 
   void _snack(String msg) => ScaffoldMessenger.of(context)
@@ -264,10 +271,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Groups')),
-      body: ValueListenableBuilder(
-        valueListenable: Hive.box<GroupModel>('groups').listenable(),
-        builder: (context, box, _) {
-          final groups = box.values.toList().reversed.toList();
+      body: ListenableBuilder(
+        listenable: Services.state,
+        builder: (context, _) {
+          final groups = Services.state.groups.reversed.toList();
           if (groups.isEmpty) return _buildEmpty();
 
           return ListView.separated(
@@ -275,13 +282,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
             itemCount: groups.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, i) {
-              final g = groups[i] as GroupModel;
-              final expenses = HiveService.getExpensesByGroup(g.id);
+              final g = groups[i];
+              final expenses = Services.state.getExpensesByGroup(g.id);
               final total = expenses
                   .where((e) => !e.isPersonal)
-                  .fold<double>(0, (s, e) => s + e.totalAmount);
+                  .fold<int>(0, (s, e) => s + e.totalAmount);
               final members = g.memberIds
-                  .map(HiveService.getUserById)
+                  .map(Services.state.getUserById)
                   .whereType<UserModel>()
                   .toList();
               return _GroupCard(
@@ -343,7 +350,7 @@ class _GroupCard extends StatelessWidget {
   final GroupModel group;
   final List<UserModel> members;
   final int expenseCount;
-  final double totalAmount;
+  final int totalAmount;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -448,7 +455,7 @@ class _GroupCard extends StatelessWidget {
                               fontSize: 10,
                               color: AppTheme.textSecondary)),
                       Text(
-                        'Rs ${totalAmount.toStringAsFixed(0)}',
+                        Money.withSymbol(totalAmount, decimals: 0),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,

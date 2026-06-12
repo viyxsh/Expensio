@@ -5,8 +5,9 @@ import '../models/group_model.dart';
 import '../models/expense_model.dart';
 import '../models/user_model.dart';
 import '../models/bill_item_model.dart';
-import '../services/hive_service.dart';
+import '../services/services.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 
 enum _SplitType { percentage, fixed }
 
@@ -106,35 +107,42 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     super.dispose();
   }
 
-  double get _totalAmount => double.tryParse(_amountCtrl.text) ?? 0;
+  /// Total amount in cents.
+  int get _totalCents => Money.tryParseToCents(_amountCtrl.text) ?? 0;
 
-  Map<String, double> _resolvedSplitMap() {
-    final amount = _totalAmount;
+  /// Resolved split as cents per participant. For equal splits the remainder is
+  /// distributed exactly; for custom splits values may drift by a few cents and
+  /// are snapped to the total in [_save].
+  Map<String, int> _resolvedSplitMap() {
+    final total = _totalCents;
     final participants = _selectedParticipants.toList();
+    if (participants.isEmpty) return {};
 
     if (_splitEqually) {
-      final share = amount / participants.length;
-      return {for (final id in participants) id: share};
+      final shares = Money.splitEqual(total, participants.length);
+      return {
+        for (int i = 0; i < participants.length; i++) participants[i]: shares[i]
+      };
     }
 
-    double fixedTotal = 0;
-    final Map<String, double> result = {};
+    int fixedTotal = 0;
+    final Map<String, int> result = {};
 
     for (final id in participants) {
       final sd = _splitData[id]!;
-      final v = double.tryParse(sd.ctrl.text) ?? 0;
       if (sd.type == _SplitType.fixed) {
-        result[id] = v;
-        fixedTotal += v;
+        final c = Money.tryParseToCents(sd.ctrl.text) ?? 0;
+        result[id] = c;
+        fixedTotal += c;
       }
     }
 
-    final remainder = amount - fixedTotal;
+    final remainder = total - fixedTotal;
     for (final id in participants) {
       final sd = _splitData[id]!;
       if (sd.type == _SplitType.percentage) {
         final pct = double.tryParse(sd.ctrl.text) ?? 0;
-        result[id] = remainder * pct / 100;
+        result[id] = (remainder * pct / 100).round();
       }
     }
     return result;
@@ -142,29 +150,38 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   bool get _splitIsValid {
     if (_splitEqually) return true;
-    final sum = _resolvedSplitMap().values.fold<double>(0, (s, v) => s + v);
-    return (_totalAmount - sum).abs() < 0.5;
+    final sum = _resolvedSplitMap().values.fold<int>(0, (s, v) => s + v);
+    return (_totalCents - sum).abs() < 50; // within 50 cents
   }
 
   String _splitStatusText() {
-    final sum = _resolvedSplitMap().values.fold<double>(0, (s, v) => s + v);
-    final diff = _totalAmount - sum;
-    if (diff.abs() < 0.5) return 'Looks good';
-    if (diff > 0) return 'Rs ${diff.toStringAsFixed(2)} unassigned';
-    return 'Over by Rs ${(-diff).toStringAsFixed(2)}';
+    final sum = _resolvedSplitMap().values.fold<int>(0, (s, v) => s + v);
+    final diff = _totalCents - sum;
+    if (diff.abs() < 50) return 'Looks good';
+    if (diff > 0) return '${Money.withSymbol(diff)} unassigned';
+    return 'Over by ${Money.withSymbol(-diff)}';
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_payerId == null) { _snack('Select who paid'); return; }
     if (_selectedParticipants.isEmpty) { _snack('Select at least one participant'); return; }
-    if (_totalAmount <= 0) { _snack('Enter a valid amount'); return; }
+    if (_totalCents <= 0) { _snack('Enter a valid amount'); return; }
     if (!_splitIsValid) { _snack(_splitStatusText()); return; }
+
+    // Snap the split to the exact total so balances always reconcile to zero.
+    final split = _resolvedSplitMap();
+    final splitSum = split.values.fold<int>(0, (s, v) => s + v);
+    final drift = _totalCents - splitSum;
+    if (drift != 0 && split.isNotEmpty) {
+      final firstKey = split.keys.first;
+      split[firstKey] = split[firstKey]! + drift;
+    }
 
     final expense = ExpenseModel(
       id: _uuid.v4(),
       title: _titleCtrl.text.trim(),
-      totalAmount: _totalAmount,
+      totalAmount: _totalCents,
       payerId: _payerId!,
       participantIds: _selectedParticipants.toList(),
       groupId: widget.group.id,
@@ -172,11 +189,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       items: _items,
       category: _selectedCategory,
       isPersonal: false,
-      splitMap: _resolvedSplitMap(),
+      splitMap: split,
     );
 
     try {
-      await HiveService.saveExpense(expense);
+      await Services.state.saveExpense(expense);
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context)
@@ -532,7 +549,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                       color: AppTheme.textPrimary)),
                               if (share > 0)
                                 Text(
-                                  'Rs ${share.toStringAsFixed(2)}',
+                                  Money.withSymbol(share),
                                   style: const TextStyle(
                                       fontSize: 11,
                                       color: AppTheme.textSecondary),

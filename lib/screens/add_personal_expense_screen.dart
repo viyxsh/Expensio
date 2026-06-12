@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../models/expense_model.dart';
-import '../services/hive_service.dart';
+import '../services/services.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 
 class AddPersonalExpenseScreen extends StatefulWidget {
   final ExpenseModel? expense; // for edit mode
@@ -39,7 +39,7 @@ class _AddPersonalExpenseScreenState
     if (_isEdit) {
       final e = widget.expense!;
       _titleCtrl.text = e.title;
-      _amountCtrl.text = e.totalAmount.toString();
+      _amountCtrl.text = Money.format(e.totalAmount);
       _category = e.category;
       _selectedDateTime = e.createdAt;
     }
@@ -55,12 +55,12 @@ class _AddPersonalExpenseScreenState
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = double.tryParse(_amountCtrl.text) ?? 0;
+    final amountCents = Money.tryParseToCents(_amountCtrl.text) ?? 0;
 
     final expense = ExpenseModel(
       id: _isEdit ? widget.expense!.id : _uuid.v4(), // ✅ keep same id
       title: _titleCtrl.text.trim(),
-      totalAmount: amount,
+      totalAmount: amountCents,
       payerId: 'personal',
       participantIds: [],
       groupId: 'personal',
@@ -70,11 +70,8 @@ class _AddPersonalExpenseScreenState
     );
 
     try {
-      if (_isEdit) {
-        await HiveService.updateExpense(expense); // ✅ update
-      } else {
-        await HiveService.saveExpense(expense); // ✅ create
-      }
+      // saveExpense upserts by id, so it covers both create and edit.
+      await Services.state.saveExpense(expense);
 
       if (mounted) {
         Navigator.pop(context);

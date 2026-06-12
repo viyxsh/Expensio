@@ -11,8 +11,9 @@ class ExpenseModel extends HiveObject {
   @HiveField(1)
   String title;
 
+  /// Total amount in minor units (cents/paise).
   @HiveField(2)
-  double totalAmount;
+  int totalAmount;
 
   @HiveField(3)
   String payerId;
@@ -35,9 +36,9 @@ class ExpenseModel extends HiveObject {
   @HiveField(9)
   bool isPersonal;
 
-  // Split map: userId -> amount they owe
+  // Split map: userId -> amount they owe, in minor units (cents/paise)
   @HiveField(10)
-  Map<String, double> splitMap;
+  Map<String, int> splitMap;
 
   ExpenseModel({
     required this.id,
@@ -50,7 +51,7 @@ class ExpenseModel extends HiveObject {
     List<BillItem>? items,
     this.category = 'General',
     this.isPersonal = false,
-    Map<String, double>? splitMap,
+    Map<String, int>? splitMap,
   })  : items = items ?? [],
         splitMap = splitMap ?? {};
 }

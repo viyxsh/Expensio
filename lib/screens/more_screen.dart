@@ -8,12 +8,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/expense_model.dart';
-import '../models/group_model.dart';
-import '../models/user_model.dart';
 import '../services/app_settings.dart';
-import '../services/hive_service.dart';
 import '../services/notification_service.dart';
+import '../services/services.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -118,7 +117,7 @@ class _MoreScreenState extends State<MoreScreen> {
   // Monthly history 
 
   void _showMonthlyHistory(List<ExpenseModel> allExpenses) {
-    final Map<String, double> monthly = {};
+    final Map<String, int> monthly = {};
     for (final e in allExpenses) {
       final key =
           '${e.createdAt.year}-${e.createdAt.month.toString().padLeft(2, '0')}';
@@ -135,8 +134,7 @@ class _MoreScreenState extends State<MoreScreen> {
     }
 
     final maxVal =
-        recent.map((e) => e.value).fold<double>(1, (a, b) => a > b ? a : b);
-    final sym = AppSettings.currencySymbol;
+        recent.map((e) => e.value).fold<int>(1, (a, b) => a > b ? a : b);
 
     showModalBottomSheet(
       context: context,
@@ -197,7 +195,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500)),
                             Text(
-                              '$sym ${entry.value.toStringAsFixed(0)}',
+                              Money.withSymbol(entry.value, decimals: 0),
                               style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -232,9 +230,9 @@ class _MoreScreenState extends State<MoreScreen> {
 
   Future<void> _exportData() async {
     try {
-      final expenses = HiveService.getAllExpenses();
-      final groups = HiveService.getAllGroups();
-      final users = HiveService.getAllUsers();
+      final expenses = Services.state.getAllExpenses();
+      final groups = Services.state.getAllGroups();
+      final users = Services.state.getAllUsers();
 
       final data = {
         'exported_at': DateTime.now().toIso8601String(),
@@ -255,14 +253,15 @@ class _MoreScreenState extends State<MoreScreen> {
             .map((e) => {
                   'id': e.id,
                   'title': e.title,
-                  'totalAmount': e.totalAmount,
+                  'totalAmount': Money.toMajor(e.totalAmount),
                   'payerId': e.payerId,
                   'participantIds': e.participantIds,
                   'groupId': e.groupId,
                   'createdAt': e.createdAt.toIso8601String(),
                   'category': e.category,
                   'isPersonal': e.isPersonal,
-                  'splitMap': e.splitMap,
+                  'splitMap': e.splitMap
+                      .map((k, v) => MapEntry(k, Money.toMajor(v))),
                 })
             .toList(),
       };
@@ -307,9 +306,7 @@ class _MoreScreenState extends State<MoreScreen> {
     );
     if (ok != true) return;
     try {
-      await Hive.box<ExpenseModel>('expenses').clear();
-      await Hive.box<GroupModel>('groups').clear();
-      await Hive.box<UserModel>('users').clear();
+      await Services.state.clearAll();
       if (mounted) _snack('All data cleared');
     } catch (e, st) {
       debugPrint('[Expensio] Error clearing data: $e\n$st');
@@ -338,22 +335,21 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('More')),
-      body: ValueListenableBuilder(
-        valueListenable:
-            Hive.box<ExpenseModel>('expenses').listenable(),
-        builder: (context, _, __) {
+      body: ListenableBuilder(
+        listenable: Services.state,
+        builder: (context, _) {
           return ValueListenableBuilder(
             valueListenable: Hive.box('settings').listenable(),
             builder: (context, __, ___) {
-              final allExpenses = HiveService.getAllExpenses();
-              final allGroups = HiveService.getAllGroups();
+              final allExpenses = Services.state.getAllExpenses();
+              final allGroups = Services.state.getAllGroups();
 
               // Current month total
               final now = DateTime.now();
               final monthStart = DateTime(now.year, now.month);
               final monthTotal = allExpenses
                   .where((e) => !e.createdAt.isBefore(monthStart))
-                  .fold<double>(0, (s, e) => s + e.totalAmount);
+                  .fold<int>(0, (s, e) => s + e.totalAmount);
 
               final sym = AppSettings.currencySymbol;
               final currencyName = AppSettings.currencyName;
@@ -407,7 +403,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    '$sym ${_compact(monthTotal)}',
+                                    '$sym ${_compact(Money.toMajor(monthTotal))}',
                                     style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w700,
