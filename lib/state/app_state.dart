@@ -18,7 +18,7 @@ import '../models/settlement_model.dart';
 class AppState extends ChangeNotifier {
   AppState(this._repo);
 
-  final ExpensioRepository _repo;
+  ExpensioRepository _repo;
 
   List<UserModel> _users = [];
   List<GroupModel> _groups = [];
@@ -29,13 +29,44 @@ class AppState extends ChangeNotifier {
 
   /// Subscribe and wait for the first value of every stream so the first frame
   /// has data.
-  Future<void> init() async {
+  Future<void> init() => bindTo(_repo);
+
+  /// Point the cache at a (possibly new) repository and re-subscribe. Called on
+  /// startup and whenever the signed-in user changes (a different uid means a
+  /// different cloud repository), so the UI swaps to the new account's data
+  /// without rebuilding the widget tree. Waits for the first value of every
+  /// stream before returning.
+  Future<void> bindTo(ExpensioRepository repo) async {
+    for (final s in _subs) {
+      s.cancel();
+    }
+    _subs.clear();
+    _repo = repo;
+    // Clear immediately so stale data from the previous account doesn't flash.
+    _users = [];
+    _groups = [];
+    _expenses = [];
+    _settlements = [];
+    notifyListeners();
     await Future.wait([
       _bind(_repo.watchUsers(), (v) => _users = v),
       _bind(_repo.watchGroups(), (v) => _groups = v),
       _bind(_repo.watchAllExpenses(), (v) => _expenses = v),
       _bind(_repo.watchAllSettlements(), (v) => _settlements = v),
     ]);
+  }
+
+  /// Ensure a profile exists for the signed-in user, keyed by their auth uid,
+  /// so they're a real selectable member of what they create. Updates the
+  /// stored name when a linked account provides a better one.
+  Future<void> ensureSelfProfile(String uid, {String? name}) async {
+    final existing = getUserById(uid);
+    final desired = (name != null && name.trim().isNotEmpty)
+        ? name.trim()
+        : (existing?.name ?? 'You');
+    if (existing == null || existing.name != desired) {
+      await _repo.saveUser(UserModel(id: uid, name: desired));
+    }
   }
 
   Future<void> _bind<T>(Stream<T> stream, void Function(T) assign) {

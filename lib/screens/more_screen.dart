@@ -9,10 +9,12 @@ import 'package:share_plus/share_plus.dart';
 
 import '../models/expense_model.dart';
 import '../services/app_settings.dart';
+import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
+import 'auth/sign_in_screen.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -314,7 +316,43 @@ class _MoreScreenState extends State<MoreScreen> {
     }
   }
 
-  // Helpers 
+  // Account
+
+  void _openSignIn() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SignInScreen()),
+    );
+  }
+
+  Future<void> _confirmSignOut() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text(
+            'You\'ll go back to guest mode on this device. Your account data '
+            'stays in the cloud and reloads when you sign back in.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await Services.auth.signOut();
+    } catch (e, st) {
+      debugPrint('[Expensio] Sign-out error: $e\n$st');
+      if (mounted) _snack('Could not sign out. Please try again.');
+    }
+  }
+
+  // Helpers
 
   void _snack(String msg) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(msg)));
@@ -359,7 +397,14 @@ class _MoreScreenState extends State<MoreScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Overview 
+                  // Account
+                  _AccountCard(
+                    onSignIn: _openSignIn,
+                    onSignOut: _confirmSignOut,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Overview
                   const SectionHeader(title: 'Overview'),
                   const SizedBox(height: 8),
                   Row(
@@ -543,7 +588,73 @@ class _Section extends StatelessWidget {
   }
 }
 
-// Settings tile 
+// Account card — guest vs signed-in, driven by the auth stream
+
+class _AccountCard extends StatelessWidget {
+  final VoidCallback onSignIn;
+  final VoidCallback onSignOut;
+  const _AccountCard({required this.onSignIn, required this.onSignOut});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AppUser?>(
+      stream: Services.auth.authStateChanges(),
+      initialData: Services.auth.currentUser,
+      builder: (context, snap) {
+        final user = snap.data;
+        final signedIn = user != null && !user.isGuest;
+        final title = signedIn
+            ? (user.displayName?.isNotEmpty == true
+                ? user.displayName!
+                : (user.email ?? 'Account'))
+            : 'Guest';
+        final subtitle = signedIn
+            ? (user.email ?? 'Synced across your devices')
+            : 'Sign in to sync across devices';
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.divider),
+          ),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            leading: CircleAvatar(
+              radius: 22,
+              backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
+              child: Icon(
+                signedIn ? Icons.person : Icons.person_outline,
+                color: AppTheme.primary,
+                size: 22,
+              ),
+            ),
+            title: Text(title,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis),
+            subtitle: Text(subtitle,
+                style: const TextStyle(
+                    fontSize: 12, color: AppTheme.textSecondary),
+                overflow: TextOverflow.ellipsis),
+            trailing: signedIn
+                ? TextButton(
+                    onPressed: onSignOut,
+                    child: const Text('Sign Out'),
+                  )
+                : FilledButton(
+                    onPressed: onSignIn,
+                    child: const Text('Sign In'),
+                  ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Settings tile
 
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
