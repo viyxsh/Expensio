@@ -1,7 +1,9 @@
 rules_version = '2';
 
-// Phase 1 security rules — member-only access. Verify in the emulator before
-// deploying (see SETUP.md). Tighten the `users` collection in Phase 2.
+// Phase 2b security rules — member-only access, plus invite-based joining.
+// A non-member can add ONLY themselves to a group when they present a valid,
+// unexpired invite code. Expense/settlement access follows CURRENT group
+// membership (not a frozen snapshot) so a freshly-joined member sees history.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -14,35 +16,81 @@ service cloud.firestore {
     function groupMembers(groupId) {
       return get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
     }
+    function isGroupMember(groupId) {
+      return signedIn() && uid() in groupMembers(groupId);
+    }
 
-    // Placeholder + account user profiles. Loose for Phase 1 (any signed-in
-    // user); restrict to shared-group members in Phase 2.
+    // Placeholder + account user profiles. Loose for Phase 1/2 (any signed-in
+    // user); restrict to shared-group members in a later phase.
     match /users/{userId} {
       allow read, write: if signedIn();
     }
 
-    // A group is readable/editable only by its members.
+    // Invites: a member mints invites/{code} for their group; the code is an
+    // unguessable id. Anyone signed in may look one up by id (needed to join),
+    // but the collection can't be enumerated.
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && uid() in groupMembers(request.resource.data.groupId);
+      allow delete: if signedIn()
+        && uid() in groupMembers(resource.data.groupId);
+    }
+
+    // A member of a group adds exactly themselves to memberIds, while writing
+    // the invite code that authorises it. Other fields must stay unchanged.
+    function isJoiningWithInvite(groupId) {
+      let oldM = resource.data.memberIds;
+      let newM = request.resource.data.memberIds;
+      let code = request.resource.data.joinCode;
+      return !(uid() in oldM)
+        && newM.hasAll(oldM)
+        && newM.size() == oldM.size() + 1
+        && (uid() in newM)
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['memberIds', 'joinCode'])
+        && exists(/databases/$(database)/documents/invites/$(code))
+        && get(/databases/$(database)/documents/invites/$(code))
+             .data.groupId == groupId
+        && get(/databases/$(database)/documents/invites/$(code))
+             .data.expiresAt > request.time;
+    }
+
     match /groups/{groupId} {
-      allow read, update, delete:
+      allow read, delete:
         if signedIn() && uid() in resource.data.memberIds;
       allow create:
         if signedIn() && uid() in request.resource.data.memberIds;
+      allow update:
+        if signedIn() && (
+          uid() in resource.data.memberIds        // existing member: full edit
+          || isJoiningWithInvite(groupId)          // non-member joining
+        );
     }
 
-    // Expenses carry a `visibleTo` array (participants + payer, or [owner] for
-    // personal). Only those users may read/write.
+    // Expenses carry a `visibleTo` array (current group members at write time,
+    // or [owner] for personal). Reads/writes are allowed to anyone in that
+    // array OR to a current member of the expense's group, so a new member can
+    // both see history and backfill themselves into `visibleTo`.
     match /expenses/{expenseId} {
       allow read, update, delete:
-        if signedIn() && uid() in resource.data.visibleTo;
+        if signedIn() && (
+          uid() in resource.data.visibleTo
+          || isGroupMember(resource.data.groupId)
+        );
       allow create:
         if signedIn() && uid() in request.resource.data.visibleTo;
     }
 
-    // Settlements carry a denormalized `memberIds` (the group's members) so they
-    // can be queried per-user and gated without an extra group lookup on read.
+    // Settlements carry a denormalized `memberIds` (the group's members). Gated
+    // the same way as expenses so a new member can read + backfill them.
     match /settlements/{settlementId} {
       allow read, update, delete:
-        if signedIn() && uid() in resource.data.memberIds;
+        if signedIn() && (
+          uid() in resource.data.memberIds
+          || isGroupMember(resource.data.groupId)
+        );
       allow create:
         if signedIn() && uid() in groupMembers(request.resource.data.groupId);
     }

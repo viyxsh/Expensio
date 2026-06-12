@@ -144,4 +144,11 @@ class AppState extends ChangeNotifier {
   Future<void> saveSettlement(SettlementModel s) => _repo.saveSettlement(s);
   Future<void> deleteSettlement(String id) => _repo.deleteSettlement(id);
   Future<void> clearAll() => _repo.clearAll();
+
+  // Invites
+  Future<String> createInvite(String groupId) => _repo.createInvite(groupId);
+  Future<GroupInvite?> getInvitePreview(String code) =>
+      _repo.getInvitePreview(code);
+  Future<void> joinGroup(String code, {String? claimPlaceholderId}) =>
+      _repo.joinGroup(code, claimPlaceholderId: claimPlaceholderId);
 }

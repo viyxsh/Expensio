@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import '../data/repository.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
 import 'group_detail_screen.dart';
+
+/// Result of the join picker: [claimId] is the placeholder member the joiner
+/// is taking over, or null to join as a new member.
+class _JoinChoice {
+  final String? claimId;
+  const _JoinChoice(this.claimId);
+}
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -265,12 +275,243 @@ class _GroupsScreenState extends State<GroupsScreen> {
   void _snack(String msg) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(msg)));
 
-  // Build 
+  // Invites
+
+  Future<void> _inviteToGroup(GroupModel group) async {
+    if (!Services.firebaseActive) {
+      _snack('Sign in to share groups across devices.');
+      return;
+    }
+    try {
+      final code = await Services.state.createInvite(group.id);
+      if (mounted) _showInviteSheet(group, code);
+    } catch (e) {
+      if (mounted) _snack('Could not create an invite. Please try again.');
+    }
+  }
+
+  void _showInviteSheet(GroupModel group, String code) {
+    final message =
+        'Join my Expensio group "${group.name}". Open Expensio → Groups → '
+        'Join with code, and enter: $code';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Invite to ${group.name}',
+                style: const TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            const Text('Share this code. It expires in 7 days.',
+                style: TextStyle(
+                    fontSize: 12, color: AppTheme.textSecondary)),
+            const SizedBox(height: 20),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.divider),
+              ),
+              child: Text(
+                code,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 6,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: code));
+                      _snack('Code copied');
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('Copy'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Share.share(message),
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Share'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _joinWithCode() async {
+    if (!Services.firebaseActive) {
+      _snack('Sign in to join a shared group.');
+      return;
+    }
+    final ctrl = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Join a Group'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            labelText: 'Invite code',
+            hintText: 'e.g. K7P2M9QX',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+    if (code == null || code.isEmpty) return;
+
+    // Preview the group first so the user confirms before joining.
+    try {
+      final invite = await Services.state.getInvitePreview(code);
+      if (!mounted) return;
+      if (invite == null) {
+        _snack('Invalid invite code.');
+        return;
+      }
+      if (invite.expired) {
+        _snack('This invite has expired.');
+        return;
+      }
+      final choice = await _chooseClaim(invite);
+      if (choice == null) return; // cancelled
+      await Services.state.joinGroup(
+        code,
+        claimPlaceholderId: choice.claimId,
+      );
+      if (mounted) _snack('Joined "${invite.groupName}"');
+    } on InviteException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (e) {
+      if (mounted) _snack('Could not join. Please try again.');
+    }
+  }
+
+  /// Ask the joiner whether they are one of the group's existing placeholder
+  /// members (claim that slot) or a brand-new member. Returns null if cancelled.
+  Future<_JoinChoice?> _chooseClaim(GroupInvite invite) {
+    if (invite.claimable.isEmpty) {
+      return showDialog<_JoinChoice>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Join "${invite.groupName}"?'),
+          content: const Text(
+              'You\'ll become a member and see this group\'s expenses.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            TextButton(
+                onPressed: () =>
+                    Navigator.pop(ctx, const _JoinChoice(null)),
+                child: const Text('Join')),
+          ],
+        ),
+      );
+    }
+    return showModalBottomSheet<_JoinChoice>(
+      context: context,
+      backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 4),
+              child: Text('Which member are you?',
+                  style: TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w700)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text(
+                'Pick your name in "${invite.groupName}" to take over its '
+                'expenses, or join as a new member.',
+                style: const TextStyle(
+                    fontSize: 12, color: AppTheme.textSecondary),
+              ),
+            ),
+            ...invite.claimable.map((m) => ListTile(
+                  leading: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+                    child: Text(
+                      m.name.isNotEmpty ? m.name[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primary),
+                    ),
+                  ),
+                  title: Text(m.name),
+                  trailing: const Icon(Icons.chevron_right, size: 18),
+                  onTap: () => Navigator.pop(ctx, _JoinChoice(m.id)),
+                )),
+            const Divider(height: 1),
+            ListTile(
+              leading: const CircleAvatar(
+                radius: 18,
+                backgroundColor: AppTheme.surfaceMid,
+                child: Icon(Icons.person_add_alt, size: 18),
+              ),
+              title: const Text('I\'m a new member'),
+              trailing: const Icon(Icons.chevron_right, size: 18),
+              onTap: () => Navigator.pop(ctx, const _JoinChoice(null)),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Groups')),
+      appBar: AppBar(
+        title: const Text('Groups'),
+        actions: [
+          IconButton(
+            tooltip: 'Join with code',
+            icon: const Icon(Icons.input),
+            onPressed: _joinWithCode,
+          ),
+        ],
+      ),
       body: ListenableBuilder(
         listenable: Services.state,
         builder: (context, _) {
@@ -301,6 +542,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         builder: (_) => GroupDetailScreen(group: g))),
                 onEdit: () => _showGroupSheet(existing: g),
                 onDelete: () => _deleteGroup(g.id),
+                onInvite: () => _inviteToGroup(g),
               );
             },
           );
@@ -354,6 +596,7 @@ class _GroupCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onInvite;
 
   const _GroupCard({
     required this.group,
@@ -363,6 +606,7 @@ class _GroupCard extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    required this.onInvite,
   });
 
   @override
@@ -406,12 +650,21 @@ class _GroupCard extends StatelessWidget {
                   ),
                   PopupMenuButton<String>(
                     onSelected: (v) {
+                      if (v == 'invite') onInvite();
                       if (v == 'edit') onEdit();
                       if (v == 'delete') onDelete();
                     },
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                     itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'invite',
+                        child: Row(children: [
+                          Icon(Icons.person_add_alt_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('Invite'),
+                        ]),
+                      ),
                       const PopupMenuItem(
                         value: 'edit',
                         child: Row(children: [

@@ -105,4 +105,19 @@ class HiveRepository implements ExpensioRepository {
     await _users.clear();
     await _settlements.clear();
   }
+
+  // Invites require the cloud backend.
+  static Never _noCloud() => throw UnsupportedError(
+        'Invites need an account — sign in to share or join a group.',
+      );
+
+  @override
+  Future<String> createInvite(String groupId) async => _noCloud();
+
+  @override
+  Future<GroupInvite?> getInvitePreview(String code) async => _noCloud();
+
+  @override
+  Future<void> joinGroup(String code, {String? claimPlaceholderId}) async =>
+      _noCloud();
 }
