@@ -45,5 +45,20 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSContactsUsageDescription</key>
+	<string>Expensio uses your contacts so you can quickly add group members by name.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Expensio uses the camera to scan invite QR codes and bills.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.example.expensio</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>expensio</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

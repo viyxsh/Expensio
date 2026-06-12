@@ -24,10 +24,10 @@ class ExpenseModelAdapter extends TypeAdapter<ExpenseModel> {
       participantIds: (fields[4] as List).cast<String>(),
       groupId: fields[5] as String,
       createdAt: fields[6] as DateTime,
-      items: (fields[7] as List).cast<BillItem>(),
+      items: (fields[7] as List?)?.cast<BillItem>(),
       category: fields[8] as String,
       isPersonal: fields[9] as bool,
-      splitMap: (fields[10] as Map).cast<String, int>(),
+      splitMap: (fields[10] as Map?)?.cast<String, int>(),
     );
   }
 
@@ -65,7 +65,7 @@ class ExpenseModelAdapter extends TypeAdapter<ExpenseModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is ExpenseModelAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is ExpenseModelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

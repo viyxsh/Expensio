@@ -23,13 +23,16 @@ class SettlementModelAdapter extends TypeAdapter<SettlementModel> {
       toId: fields[3] as String,
       amountCents: fields[4] as int,
       createdAt: fields[5] as DateTime,
+      // Legacy records (written before two-sided confirmation) have no field 6.
+      status: (fields[6] as String?) ?? SettlementModel.statusConfirmed,
+      markedById: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettlementModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +44,11 @@ class SettlementModelAdapter extends TypeAdapter<SettlementModel> {
       ..writeByte(4)
       ..write(obj.amountCents)
       ..writeByte(5)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(6)
+      ..write(obj.status)
+      ..writeByte(7)
+      ..write(obj.markedById);
   }
 
   @override

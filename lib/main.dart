@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:app_links/app_links.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'data/hive_repository.dart';
 import 'services/auth_service.dart';
@@ -9,6 +11,7 @@ import 'services/notification_service.dart';
 import 'services/services.dart';
 import 'services/session_controller.dart';
 import 'state/app_state.dart';
+import 'screens/join_flow.dart';
 import 'screens/main_shell.dart';
 import 'utils/app_theme.dart';
 
@@ -54,14 +57,53 @@ void main() async {
   runApp(const ExpensioApp());
 }
 
-class ExpensioApp extends StatelessWidget {
+class ExpensioApp extends StatefulWidget {
   const ExpensioApp({super.key});
+
+  @override
+  State<ExpensioApp> createState() => _ExpensioAppState();
+}
+
+class _ExpensioAppState extends State<ExpensioApp> {
+  final _navKey = GlobalKey<NavigatorState>();
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    // Cold start via an invite link, then links received while running.
+    final initial = await _appLinks.getInitialLink();
+    if (initial != null) _handleUri(initial);
+    _linkSub = _appLinks.uriLinkStream.listen(_handleUri);
+  }
+
+  void _handleUri(Uri uri) {
+    final code = parseInviteCode(uri.toString());
+    if (code == null) return;
+    // Defer until the navigator + messenger are mounted.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _navKey.currentContext;
+      if (ctx != null) runJoinFlow(ctx, code);
+    });
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Expensio',
       debugShowCheckedModeBanner: false,
+      navigatorKey: _navKey,
       theme: AppTheme.theme,
       home: const MainShell(),
     );

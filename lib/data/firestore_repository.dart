@@ -35,6 +35,9 @@ class FirestoreRepository implements ExpensioRepository {
 
   // Serialization
 
+  UserModel _userFromData(String id, Map<String, dynamic>? d) =>
+      UserModel(id: id, name: d?['name'] as String? ?? '');
+
   Map<String, dynamic> _groupToMap(GroupModel g) => {
         'name': g.name,
         'memberIds': g.memberIds,
@@ -116,6 +119,8 @@ class FirestoreRepository implements ExpensioRepository {
         'toId': s.toId,
         'amountCents': s.amountCents,
         'createdAt': Timestamp.fromDate(s.createdAt),
+        'status': s.status,
+        'markedById': s.markedById,
       };
 
   SettlementModel _settlementFromDoc(
@@ -128,15 +133,17 @@ class FirestoreRepository implements ExpensioRepository {
       toId: d['toId'] as String? ?? '',
       amountCents: (d['amountCents'] as num?)?.toInt() ?? 0,
       createdAt: (d['createdAt'] as Timestamp).toDate(),
+      status:
+          d['status'] as String? ?? SettlementModel.statusConfirmed,
+      markedById: d['markedById'] as String?,
     );
   }
 
   // Reactive reads
 
   @override
-  Stream<List<UserModel>> watchUsers() => _users.snapshots().map((s) => s.docs
-      .map((d) => UserModel(id: d.id, name: d.data()['name'] as String? ?? ''))
-      .toList());
+  Stream<List<UserModel>> watchUsers() => _users.snapshots().map((s) =>
+      s.docs.map((d) => _userFromData(d.id, d.data())).toList());
 
   @override
   Stream<List<GroupModel>> watchGroups() => _groups
@@ -178,16 +185,14 @@ class FirestoreRepository implements ExpensioRepository {
   @override
   Future<List<UserModel>> getAllUsers() async {
     final s = await _users.get();
-    return s.docs
-        .map((d) => UserModel(id: d.id, name: d.data()['name'] as String? ?? ''))
-        .toList();
+    return s.docs.map((d) => _userFromData(d.id, d.data())).toList();
   }
 
   @override
   Future<UserModel?> getUser(String id) async {
     final d = await _users.doc(id).get();
     if (!d.exists) return null;
-    return UserModel(id: d.id, name: d.data()!['name'] as String? ?? '');
+    return _userFromData(d.id, d.data());
   }
 
   @override

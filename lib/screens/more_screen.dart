@@ -525,23 +525,6 @@ class _MoreScreenState extends State<MoreScreen> {
                       onTap: _confirmClearAll,
                     ),
                   ]),
-                  const SizedBox(height: 20),
-
-                  // About 
-                  const SectionHeader(title: 'About'),
-                  const SizedBox(height: 8),
-                  const _Section(children: [
-                    _SettingsTile(
-                      icon: Icons.info_outline,
-                      title: 'Version',
-                      subtitle: '1.0.0',
-                    ),
-                    _SettingsTile(
-                      icon: Icons.psychology_outlined,
-                      title: 'AI Model',
-                      subtitle: 'Google Gemini 2.5 Flash Lite',
-                    ),
-                  ]),
                   const SizedBox(height: 40),
                 ],
               );

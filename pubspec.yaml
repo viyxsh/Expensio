@@ -43,6 +43,14 @@ dependencies:
   share_plus: ^10.1.4
   path_provider: ^2.1.4
 
+  # Add members from phone contacts
+  flutter_contacts: ^1.1.9
+
+  # Invite QR codes (show + scan) and deep-link join
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.2.3
+  app_links: ^6.3.2
+
   # Environment variables
   flutter_dotenv: ^5.2.1
 

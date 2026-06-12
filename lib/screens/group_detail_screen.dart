@@ -7,6 +7,8 @@ import '../utils/app_theme.dart';
 import '../utils/money.dart';
 import 'add_expense_screen.dart';
 import 'bill_scan_screen.dart';
+import 'group_editor.dart';
+import 'invite_sheet.dart';
 import 'settlement_screen.dart';
 
 class GroupDetailScreen extends StatelessWidget {
@@ -14,33 +16,97 @@ class GroupDetailScreen extends StatelessWidget {
 
   const GroupDetailScreen({super.key, required this.group});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(group.name),
+  Future<void> _confirmDelete(BuildContext context, GroupModel g) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Group'),
+        content: const Text(
+            'All expenses in this group will be permanently deleted.'),
         actions: [
-          TextButton.icon(
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => SettlementScreen(group: group))),
-            icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
-            label: const Text('Settle Up'),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: const Text('Delete'),
           ),
         ],
       ),
-      body: ListenableBuilder(
-        listenable: Services.state,
-        builder: (context, _) {
-          final expenses = Services.state.getExpensesByGroup(group.id);
-          final members = group.memberIds
-              .map(Services.state.getUserById)
-              .whereType<UserModel>()
-              .toList();
-          final balances = Services.state.computeBalances(group.id);
+    );
+    if (ok != true) return;
+    await Services.state.deleteGroup(g.id);
+    if (context.mounted) Navigator.pop(context); // leave the deleted group
+  }
 
-          return CustomScrollView(
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Services.state,
+      builder: (context, _) {
+        // Resolve the latest group so the title/members update after an edit.
+        final g = Services.state.getGroupById(group.id) ?? group;
+        final expenses = Services.state.getExpensesByGroup(g.id);
+        final members = g.memberIds
+            .map(Services.state.getUserById)
+            .whereType<UserModel>()
+            .toList();
+        final balances = Services.state.computeBalances(g.id);
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(g.name),
+            actions: [
+              TextButton.icon(
+                onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(
+                        builder: (_) => SettlementScreen(group: g))),
+                icon:
+                    const Icon(Icons.account_balance_wallet_outlined, size: 18),
+                label: const Text('Settle Up'),
+                style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+              ),
+              PopupMenuButton<String>(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                onSelected: (v) {
+                  if (v == 'invite') showInviteSheet(context, g);
+                  if (v == 'edit') showGroupEditor(context, existing: g);
+                  if (v == 'delete') _confirmDelete(context, g);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'invite',
+                    child: Row(children: [
+                      Icon(Icons.person_add_alt_outlined, size: 18),
+                      SizedBox(width: 8),
+                      Text('Invite'),
+                    ]),
+                  ),
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(children: [
+                      Icon(Icons.edit_outlined, size: 18),
+                      SizedBox(width: 8),
+                      Text('Edit Group'),
+                    ]),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(children: [
+                      Icon(Icons.delete_outline,
+                          color: AppTheme.errorColor, size: 18),
+                      SizedBox(width: 8),
+                      Text('Delete',
+                          style: TextStyle(color: AppTheme.errorColor)),
+                    ]),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          body: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
@@ -48,11 +114,11 @@ class GroupDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSummaryCards(expenses),
+                      _buildSummaryCards(g, expenses),
                       const SizedBox(height: 20),
                       _buildMembersSection(members, balances),
                       const SizedBox(height: 20),
-                      _buildActionButtons(context, members),
+                      _buildActionButtons(context, g, members),
                       const SizedBox(height: 16),
                       const SectionHeader(title: 'Expenses'),
                     ],
@@ -80,13 +146,13 @@ class GroupDetailScreen extends StatelessWidget {
                   ),
                 ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSummaryCards(List<ExpenseModel> expenses) {
+  Widget _buildSummaryCards(GroupModel g, List<ExpenseModel> expenses) {
     final groupExp = expenses.where((e) => !e.isPersonal).toList();
     final total = groupExp.fold<int>(0, (s, e) => s + e.totalAmount);
     return Row(
@@ -111,7 +177,7 @@ class GroupDetailScreen extends StatelessWidget {
         Expanded(
           child: InfoCard(
             label: 'Members',
-            value: '${group.memberIds.length}',
+            value: '${g.memberIds.length}',
             icon: Icons.people_outline,
           ),
         ),
@@ -175,7 +241,7 @@ class GroupDetailScreen extends StatelessWidget {
   }
 
   Widget _buildActionButtons(
-      BuildContext context, List<UserModel> members) {
+      BuildContext context, GroupModel g, List<UserModel> members) {
     return Row(
       children: [
         Expanded(
@@ -183,7 +249,7 @@ class GroupDetailScreen extends StatelessWidget {
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) =>
-                        AddExpenseScreen(group: group, members: members))),
+                        AddExpenseScreen(group: g, members: members))),
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Add Expense'),
           ),
@@ -194,7 +260,7 @@ class GroupDetailScreen extends StatelessWidget {
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) =>
-                        BillScanScreen(group: group, members: members))),
+                        BillScanScreen(group: g, members: members))),
             icon: const Icon(Icons.document_scanner_outlined, size: 18),
             label: const Text('Scan Bill'),
           ),

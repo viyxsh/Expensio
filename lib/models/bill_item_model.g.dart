@@ -21,7 +21,7 @@ class BillItemAdapter extends TypeAdapter<BillItem> {
       price: fields[1] as double,
       category: fields[2] as String,
       quantity: fields[3] as int,
-      assignedUserIds: (fields[4] as List).cast<String>(),
+      assignedUserIds: (fields[4] as List?)?.cast<String>(),
     );
   }
 
@@ -47,7 +47,7 @@ class BillItemAdapter extends TypeAdapter<BillItem> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is BillItemAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is BillItemAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

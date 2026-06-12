@@ -13,9 +13,8 @@ class GroupModelAdapter extends TypeAdapter<GroupModel> {
   @override
   GroupModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
-    final numFields = numOfFields;
     final fields = <int, dynamic>{
-      for (int i = 0; i < numFields; i++) reader.readByte(): reader.read(),
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return GroupModel(
       id: fields[0] as String,
@@ -48,7 +47,7 @@ class GroupModelAdapter extends TypeAdapter<GroupModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is GroupModelAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is GroupModelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

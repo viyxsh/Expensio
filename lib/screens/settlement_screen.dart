@@ -37,13 +37,28 @@ class _SettlementScreenState extends State<SettlementScreen> {
     if (mounted) setState(() {});
   }
 
+  // Placeholder (dummy) members have uuid ids; real accounts are Firebase uids.
+  bool _isPlaceholder(String id) => id.contains('-');
+
+  /// A real account other than me must confirm; placeholders / my own slot are
+  /// recorded straight away.
+  bool _needsConfirmation(String toId) =>
+      !_isPlaceholder(toId) && toId != Services.currentUserId;
+
+  /// Who may confirm a pending payment: the payee, or whoever manages a
+  /// placeholder payee.
+  bool _canConfirm(SettlementModel s) =>
+      s.toId == Services.currentUserId || _isPlaceholder(s.toId);
+
   Future<void> _recordPayment(Settlement s) async {
+    final pending = _needsConfirmation(s.toId);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Record Payment'),
+        title: const Text('Mark as Paid'),
         content: Text(
-            'Mark ${s.fromName} → ${s.toName} of ${Money.withSymbol(s.amount)} as paid?'),
+            'Record ${s.fromName} → ${s.toName} of ${Money.withSymbol(s.amount)}?'
+            '${pending ? '\n\n${s.toName} will be asked to confirm they received it.' : ''}'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -63,20 +78,37 @@ class _SettlementScreenState extends State<SettlementScreen> {
       toId: s.toId,
       amountCents: s.amount,
       createdAt: DateTime.now(),
+      status: pending
+          ? SettlementModel.statusPending
+          : SettlementModel.statusConfirmed,
+      markedById: Services.currentUserId,
     ));
     if (mounted) {
       setState(() {});
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Payment recorded')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(pending
+              ? 'Marked as paid — awaiting confirmation'
+              : 'Payment recorded')));
     }
   }
 
-  Future<void> _undoPayment(SettlementModel s, String label) async {
+  Future<void> _confirmSettlement(SettlementModel s) async {
+    s.status = SettlementModel.statusConfirmed;
+    await Services.state.saveSettlement(s);
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment confirmed')));
+    }
+  }
+
+  Future<void> _removeSettlement(SettlementModel s, String label,
+      {required String title, required String body, required String action}) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Undo Payment'),
-        content: Text('Remove the recorded payment "$label"?'),
+        title: Text(title),
+        content: Text(body),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -84,7 +116,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('Remove'),
+            child: Text(action),
           ),
         ],
       ),
@@ -105,7 +137,9 @@ class _SettlementScreenState extends State<SettlementScreen> {
     final userNames = {for (final m in members) m.id: m.name};
     final settlements =
     SettlementService.computeSettlements(balances, userNames);
-    final recorded = Services.state.getSettlementsByGroup(group.id);
+    final allRecorded = Services.state.getSettlementsByGroup(group.id);
+    final pending = allRecorded.where((s) => s.isPending).toList();
+    final confirmed = allRecorded.where((s) => s.isConfirmed).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -164,11 +198,43 @@ class _SettlementScreenState extends State<SettlementScreen> {
               ),
             ),
 
-          if (recorded.isNotEmpty) ...[
+          if (pending.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const SectionHeader(title: 'Awaiting Confirmation'),
+            const SizedBox(height: 8),
+            ...pending.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _PendingCard(
+                    settlement: s,
+                    fromName: userNames[s.fromId] ?? s.fromId,
+                    toName: userNames[s.toId] ?? s.toId,
+                    canConfirm: _canConfirm(s),
+                    canCancel: s.markedById == Services.currentUserId,
+                    onConfirm: () => _confirmSettlement(s),
+                    onDispute: () => _removeSettlement(
+                      s,
+                      '${userNames[s.fromId]} → ${userNames[s.toId]}',
+                      title: 'Dispute Payment',
+                      body:
+                          'Remove this pending payment? Use this if you didn\'t receive it.',
+                      action: 'Dispute',
+                    ),
+                    onCancel: () => _removeSettlement(
+                      s,
+                      '${userNames[s.fromId]} → ${userNames[s.toId]}',
+                      title: 'Cancel Payment',
+                      body: 'Withdraw this pending payment?',
+                      action: 'Withdraw',
+                    ),
+                  ),
+                )),
+          ],
+
+          if (confirmed.isNotEmpty) ...[
             const SizedBox(height: 20),
             const SectionHeader(title: 'Recorded Payments'),
             const SizedBox(height: 8),
-            _buildRecordedCard(recorded, userNames),
+            _buildRecordedCard(confirmed, userNames),
           ],
 
           const SizedBox(height: 20),
@@ -212,7 +278,13 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 trailing: IconButton(
                   icon: const Icon(Icons.undo,
                       size: 18, color: AppTheme.textSecondary),
-                  onPressed: () => _undoPayment(s, label),
+                  onPressed: () => _removeSettlement(
+                    s,
+                    label,
+                    title: 'Undo Payment',
+                    body: 'Remove the recorded payment "$label"?',
+                    action: 'Remove',
+                  ),
                 ),
               ),
             ],
@@ -567,6 +639,107 @@ class _SettlementCard extends StatelessWidget {
           ),
         ),
       ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingCard extends StatelessWidget {
+  final SettlementModel settlement;
+  final String fromName;
+  final String toName;
+  final bool canConfirm;
+  final bool canCancel;
+  final VoidCallback onConfirm;
+  final VoidCallback onDispute;
+  final VoidCallback onCancel;
+
+  const _PendingCard({
+    required this.settlement,
+    required this.fromName,
+    required this.toName,
+    required this.canConfirm,
+    required this.canCancel,
+    required this.onConfirm,
+    required this.onDispute,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const amber = Color(0xFFE0A52F);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: amber.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.hourglass_top, color: amber, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$fromName → $toName',
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary),
+                ),
+              ),
+              Text(
+                Money.withSymbol(settlement.amountCents),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            canConfirm
+                ? 'Did you receive this payment?'
+                : 'Awaiting $toName\'s confirmation',
+            style: const TextStyle(fontSize: 12, color: amber),
+          ),
+          const SizedBox(height: 12),
+          if (canConfirm)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onDispute,
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.errorColor),
+                    child: const Text('Dispute'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onConfirm,
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Confirm'),
+                  ),
+                ),
+              ],
+            )
+          else if (canCancel)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onCancel,
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textSecondary),
+                child: const Text('Withdraw'),
+              ),
+            ),
         ],
       ),
     );
