@@ -18,9 +18,14 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Intentionally non-const: a theme change rebuilds MainShell, and these
+    // must be fresh instances so each screen re-runs build() and repaints with
+    // the new palette (colours come from AppTheme getters, not the inherited
+    // Theme, so they don't rebuild on their own).
+    // ignore: prefer_const_constructors
     final screens = [
-      const TransactionsScreen(),
-      const GroupsScreen(),
+      TransactionsScreen(), // ignore: prefer_const_constructors
+      GroupsScreen(), // ignore: prefer_const_constructors
       MoreScreen(onSelectTab: _selectTab),
     ];
     return Scaffold(

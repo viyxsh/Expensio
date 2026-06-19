@@ -116,6 +116,13 @@ class MonthlyUnwrappedCard extends StatelessWidget {
     final accent = AppTheme.categoryColor(w.topCategory);
     final persona = personaFor(w.topCategory);
     final sym = AppSettings.currencySymbol;
+    final dark = AppTheme.isDark;
+    // A version of the accent with enough contrast for the small label on the
+    // tinted card: bright on dark, deepened on light.
+    final accentText = HSLColor.fromColor(accent)
+        .withLightness(dark ? 0.72 : 0.40)
+        .withSaturation(0.85)
+        .toColor();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -132,13 +139,15 @@ class MonthlyUnwrappedCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                accent.withValues(alpha: 0.42),
+                accent.withValues(alpha: dark ? 0.40 : 0.20),
                 Color.alphaBlend(
-                    accent.withValues(alpha: 0.10), AppTheme.surface),
+                    accent.withValues(alpha: dark ? 0.10 : 0.04),
+                    AppTheme.surface),
               ],
             ),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: accent.withValues(alpha: 0.45)),
+            border: Border.all(
+                color: accent.withValues(alpha: dark ? 0.45 : 0.30)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,12 +160,13 @@ class MonthlyUnwrappedCard extends StatelessWidget {
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.5,
-                      color: Color.alphaBlend(
-                          accent.withValues(alpha: 0.9), Colors.white),
+                      color: accentText,
                     ),
                   ),
                   const Spacer(),
-                  _Pulse(child: Icon(Icons.auto_awesome, size: 16, color: accent)),
+                  _Pulse(
+                      child: Icon(Icons.auto_awesome,
+                          size: 16, color: accentText)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -200,7 +210,7 @@ class MonthlyUnwrappedCard extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 12, color: AppTheme.textSecondary)),
                   const Spacer(),
-                  Icon(Icons.chevron_right, size: 18, color: accent),
+                  Icon(Icons.chevron_right, size: 18, color: accentText),
                 ],
               ),
             ],

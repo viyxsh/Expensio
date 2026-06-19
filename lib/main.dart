@@ -136,7 +136,10 @@ class _ExpensioAppState extends State<ExpensioApp>
           debugShowCheckedModeBanner: false,
           navigatorKey: _navKey,
           theme: AppTheme.theme,
-          home: const MainShell(),
+          // Non-const so the whole tree rebuilds when the theme changes — the
+          // app reads AppTheme colour getters directly (not Theme.of(context)),
+          // so it needs an explicit rebuild to repaint with the new palette.
+          home: MainShell(), // ignore: prefer_const_constructors
         );
       },
     );

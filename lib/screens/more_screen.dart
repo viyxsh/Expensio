@@ -489,16 +489,16 @@ class _MoreScreenState extends State<MoreScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.payments_outlined,
-                                        size: 13,
-                                        color: AppTheme.textSecondary),
-                                    const SizedBox(width: 3),
                                     Expanded(
-                                      child: Text('This Month',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: AppTheme.textSecondary),
-                                          overflow: TextOverflow.ellipsis),
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text('This Month',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color:
+                                                    AppTheme.textSecondary)),
+                                      ),
                                     ),
                                     const SizedBox(width: 3),
                                     Icon(Icons.chevron_right,
