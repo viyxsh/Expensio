@@ -202,7 +202,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               color: AppTheme.primary.withOpacity(0.06),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(Icons.group_outlined,
+            child: Icon(Icons.group_outlined,
                 size: 40, color: AppTheme.primary),
           ),
           const SizedBox(height: 20),
@@ -210,7 +210,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               style: TextStyle(
                   fontSize: 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Create a group to start tracking\nshared expenses',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
@@ -265,7 +265,7 @@ class _GroupCard extends StatelessWidget {
                       color: AppTheme.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.group_outlined,
+                    child: Icon(Icons.group_outlined,
                         color: AppTheme.primary, size: 22),
                   ),
                   const SizedBox(width: 12),
@@ -279,7 +279,7 @@ class _GroupCard extends StatelessWidget {
                                 fontWeight: FontWeight.w700)),
                         if (group.description.isNotEmpty)
                           Text(group.description,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
                                   color: AppTheme.textSecondary)),
                       ],
@@ -321,7 +321,7 @@ class _GroupCard extends StatelessWidget {
                         ]),
                       ),
                     ],
-                    icon: const Icon(Icons.more_vert,
+                    icon: Icon(Icons.more_vert,
                         color: AppTheme.textSecondary, size: 20),
                   ),
                 ],
@@ -340,13 +340,13 @@ class _GroupCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('Total',
+                      Text('Total',
                           style: TextStyle(
                               fontSize: 10,
                               color: AppTheme.textSecondary)),
                       Text(
                         Money.withSymbol(totalAmount, decimals: 0),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary,
@@ -367,7 +367,7 @@ class _GroupCard extends StatelessWidget {
                         backgroundColor:
                         AppTheme.primary.withOpacity(0.1),
                         child: Text(m.name[0].toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: AppTheme.primary)),
@@ -375,7 +375,7 @@ class _GroupCard extends StatelessWidget {
                     )),
                     if (members.length > 6)
                       Text('+${members.length - 6}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondary)),
                     const Spacer(),
@@ -435,7 +435,7 @@ class _Stat extends StatelessWidget {
               fontSize: 13, fontWeight: FontWeight.w600)),
       const SizedBox(width: 3),
       Text(label,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 12, color: AppTheme.textSecondary)),
     ]);
   }

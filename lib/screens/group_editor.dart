@@ -197,7 +197,7 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
               _isEdit
                   ? 'Update the name, details, and members.'
                   : 'Name your group and add the people in it.',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 20),
@@ -234,14 +234,14 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
                     color: AppTheme.surfaceMid,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('You are included',
+                  child: Text('You are included',
                       style: TextStyle(
                           fontSize: 11, color: AppTheme.textSecondary)),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Add people you\'re tracking who aren\'t on the app. To add '
               'someone who uses Expensio, invite them with a code.',
               style: TextStyle(
@@ -305,12 +305,12 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
   Widget _inviteAction() {
     if (!_isEdit) {
       // A new group has no id yet; invites are created once it exists.
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 4),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
             Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
-            SizedBox(width: 6),
+            const SizedBox(width: 6),
             Expanded(
               child: Text(
                 'Create the group, then invite people who use Expensio.',
@@ -349,7 +349,7 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, color: AppTheme.textSecondary, size: 20),
+            icon: Icon(Icons.close, color: AppTheme.textSecondary, size: 20),
             tooltip: 'Remove',
             onPressed: () => setState(() {
               m.ctrl.dispose();

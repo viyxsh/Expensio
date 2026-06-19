@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/group_model.dart';
@@ -95,7 +94,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   String _dominantCategory(List<BillItem> items) {
     if (items.isEmpty) return 'General';
     final freq = <String, int>{};
-    for (final i in items) freq[i.category] = (freq[i.category] ?? 0) + 1;
+    for (final i in items) {
+      freq[i.category] = (freq[i.category] ?? 0) + 1;
+    }
     return freq.entries.reduce((a, b) => a.value > b.value ? a : b).key;
   }
 
@@ -103,7 +104,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void dispose() {
     _titleCtrl.dispose();
     _amountCtrl.dispose();
-    for (final sd in _splitData.values) sd.ctrl.dispose();
+    for (final sd in _splitData.values) {
+      sd.ctrl.dispose();
+    }
     super.dispose();
   }
 
@@ -464,7 +467,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         // Header + status pill
         Row(
           children: [
-            const Text('CUSTOM SPLIT',
+            Text('CUSTOM SPLIT',
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -499,7 +502,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         Row(children: [
           _Legend(color: AppTheme.primary, label: '% of total'),
           const SizedBox(width: 16),
-          _Legend(color: AppTheme.successColor, label: 'Fixed amount'),
+          const _Legend(color: AppTheme.successColor, label: 'Fixed amount'),
         ]),
         const SizedBox(height: 10),
 
@@ -532,7 +535,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           radius: 18,
                           backgroundColor: AppTheme.surfaceMid,
                           child: Text(m.name[0].toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.textSecondary)),
@@ -543,14 +546,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(m.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontWeight: FontWeight.w500,
                                       fontSize: 13,
                                       color: AppTheme.textPrimary)),
                               if (share > 0)
                                 Text(
                                   Money.withSymbol(share),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 11,
                                       color: AppTheme.textSecondary),
                                 ),
@@ -597,25 +600,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             const TextInputType.numberWithOptions(
                                 decimal: true),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppTheme.textPrimary),
                             decoration: InputDecoration(
                               suffixText: isPct ? '%' : '',
-                              suffixStyle: const TextStyle(
+                              suffixStyle: TextStyle(
                                   color: AppTheme.textSecondary,
                                   fontSize: 12),
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 10),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
+                                borderSide: BorderSide(
                                     color: AppTheme.divider),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
+                                borderSide: BorderSide(
                                     color: AppTheme.divider),
                               ),
                               focusedBorder: OutlineInputBorder(
@@ -691,12 +694,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   ),
                 ),
                 title: Text(item.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13, color: AppTheme.textPrimary)),
                 subtitle: CategoryBadge(category: item.category),
                 trailing: Text(
                   'Rs ${item.totalPrice.toStringAsFixed(2)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: AppTheme.textPrimary),
@@ -724,7 +727,7 @@ class _Legend extends StatelessWidget {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 5),
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11, color: AppTheme.textSecondary)),
       ],
     );

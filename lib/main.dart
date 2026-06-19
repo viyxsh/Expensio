@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'data/hive_repository.dart';
+import 'services/app_settings.dart';
 import 'services/auth_service.dart';
 import 'services/firebase_bootstrap.dart';
 import 'services/hive_service.dart';
@@ -65,7 +67,8 @@ class ExpensioApp extends StatefulWidget {
   State<ExpensioApp> createState() => _ExpensioAppState();
 }
 
-class _ExpensioAppState extends State<ExpensioApp> {
+class _ExpensioAppState extends State<ExpensioApp>
+    with WidgetsBindingObserver {
   final _navKey = GlobalKey<NavigatorState>();
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSub;
@@ -73,7 +76,27 @@ class _ExpensioAppState extends State<ExpensioApp> {
   @override
   void initState() {
     super.initState();
+    // Rebuild on OS light/dark change so 'system' theme mode tracks it.
+    WidgetsBinding.instance.addObserver(this);
     _initDeepLinks();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    if (mounted) setState(() {});
+  }
+
+  /// Resolve the effective brightness from the saved theme-mode preference,
+  /// falling back to the OS setting for 'system'.
+  Brightness _resolveBrightness() {
+    switch (AppSettings.themeMode) {
+      case 'light':
+        return Brightness.light;
+      case 'dark':
+        return Brightness.dark;
+      default:
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    }
   }
 
   Future<void> _initDeepLinks() async {
@@ -95,18 +118,27 @@ class _ExpensioAppState extends State<ExpensioApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Expensio',
-      debugShowCheckedModeBanner: false,
-      navigatorKey: _navKey,
-      theme: AppTheme.theme,
-      home: const MainShell(),
+    // Rebuild whenever the theme-mode setting changes, and resolve the palette
+    // before building the theme so all AppTheme colour getters match.
+    return ValueListenableBuilder(
+      valueListenable: Hive.box('settings').listenable(keys: ['theme_mode']),
+      builder: (context, _, __) {
+        AppTheme.brightness = _resolveBrightness();
+        return MaterialApp(
+          title: 'Expensio',
+          debugShowCheckedModeBanner: false,
+          navigatorKey: _navKey,
+          theme: AppTheme.theme,
+          home: const MainShell(),
+        );
+      },
     );
   }
 }

@@ -103,7 +103,7 @@ Future<_JoinChoice?> _chooseClaim(BuildContext context, GroupInvite invite) {
             child: Text(
               'Pick your name in "${invite.groupName}" to take over its '
               'expenses, or join as a new member.',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, color: AppTheme.textSecondary),
             ),
           ),
@@ -113,7 +113,7 @@ Future<_JoinChoice?> _chooseClaim(BuildContext context, GroupInvite invite) {
                   backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                   child: Text(
                     m.name.isNotEmpty ? m.name[0].toUpperCase() : '?',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w700, color: AppTheme.primary),
                   ),
                 ),
@@ -123,10 +123,10 @@ Future<_JoinChoice?> _chooseClaim(BuildContext context, GroupInvite invite) {
               )),
           const Divider(height: 1),
           ListTile(
-            leading: const CircleAvatar(
+            leading: CircleAvatar(
               radius: 18,
               backgroundColor: AppTheme.surfaceMid,
-              child: Icon(Icons.person_add_alt, size: 18),
+              child: const Icon(Icons.person_add_alt, size: 18),
             ),
             title: const Text('I\'m a new member'),
             trailing: const Icon(Icons.chevron_right, size: 18),

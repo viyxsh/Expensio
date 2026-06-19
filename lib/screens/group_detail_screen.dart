@@ -209,7 +209,7 @@ class GroupDetailScreen extends StatelessWidget {
                     leading: CircleAvatar(
                       backgroundColor: AppTheme.primary.withOpacity(0.12),
                       child: Text(m.name[0].toUpperCase(),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.w700,
                               color: AppTheme.primary)),
                     ),
@@ -224,7 +224,7 @@ class GroupDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: AppTheme.divider),
                       ),
-                      child: const Text('Settled',
+                      child: Text('Settled',
                           style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondary)),
@@ -283,7 +283,7 @@ class _BalanceBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(isPos ? 'Gets back' : 'Owes',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11, color: AppTheme.textSecondary)),
         Text(
           Money.withSymbol(balance.abs()),
@@ -368,7 +368,7 @@ class _ExpenseCard extends StatelessWidget {
                       expense.isPersonal
                           ? 'Personal expense'
                           : 'Paid by ${payer.name}  •  $participantCount people',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12, color: AppTheme.textSecondary),
                     ),
                     const SizedBox(height: 4),
@@ -379,7 +379,7 @@ class _ExpenseCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 Money.withSymbol(expense.totalAmount),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
@@ -418,10 +418,10 @@ class _EmptyExpenses extends StatelessWidget {
           Icon(Icons.receipt_long_outlined,
               size: 48, color: AppTheme.surfaceHigh),
           const SizedBox(height: 12),
-          const Text('No expenses yet',
+          Text('No expenses yet',
               style: TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Add an expense or scan a bill\nto get started',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),

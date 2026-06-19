@@ -6,6 +6,7 @@ class AppSettings {
   static const _settlementReminderKey = 'notif_settlement';
   static const _dailyReminderKey = 'notif_daily';
   static const _chartsExpandedKey = 'tx_charts_expanded';
+  static const _themeModeKey = 'theme_mode';
 
   static Box get _box => Hive.box(_boxName);
 
@@ -61,4 +62,11 @@ class AppSettings {
 
   static Future<void> setChartsExpanded(bool v) =>
       _box.put(_chartsExpandedKey, v);
+
+  /// 'system' | 'light' | 'dark'. Defaults to dark (the app's original look).
+  static String get themeMode =>
+      _box.get(_themeModeKey, defaultValue: 'dark') as String;
+
+  static Future<void> setThemeMode(String mode) =>
+      _box.put(_themeModeKey, mode);
 }

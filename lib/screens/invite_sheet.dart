@@ -52,7 +52,7 @@ Future<void> showInviteSheet(BuildContext context, GroupModel group) async {
               style:
                   const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          const Text('Scan the QR or share the code. Expires in 7 days.',
+          Text('Scan the QR or share the code. Expires in 7 days.',
               style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
           const SizedBox(height: 18),
           Container(
@@ -78,7 +78,7 @@ Future<void> showInviteSheet(BuildContext context, GroupModel group) async {
             ),
             child: Text(
               code,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 6,

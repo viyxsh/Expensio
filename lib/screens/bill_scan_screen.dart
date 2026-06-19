@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -271,7 +270,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
           if (_state == ScanState.done && _items.isNotEmpty)
             TextButton(
               onPressed: _proceedToAddExpense,
-              child: const Text('Use Items',
+              child: Text('Use Items',
                   style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppTheme.primary)),
@@ -309,11 +308,11 @@ class _BillScanScreenState extends State<BillScanScreen> {
                   colors: [Color(0xFF4285F4), Color(0xFF34A853)]),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.auto_awesome, color: AppTheme.surface, size: 16),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text('Powered by Gemini AI',
                     style: TextStyle(
                         color: AppTheme.surface,
@@ -323,13 +322,13 @@ class _BillScanScreenState extends State<BillScanScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text('Scan a Bill',
+          Text('Scan a Bill',
               style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary)),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Take a photo or upload a screenshot. AI will extract items, prices, and categories automatically.',
             style: TextStyle(
                 fontSize: 15, color: AppTheme.textSecondary, height: 1.5),
@@ -370,11 +369,11 @@ class _BillScanScreenState extends State<BillScanScreen> {
               ),
               const SizedBox(height: 32),
             ],
-            const CircularProgressIndicator(color: AppTheme.primary),
+            CircularProgressIndicator(color: AppTheme.primary),
             const SizedBox(height: 20),
             Text(
               _statusMessage,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   color: AppTheme.textPrimary),
@@ -390,12 +389,12 @@ class _BillScanScreenState extends State<BillScanScreen> {
                     colors: [Color(0xFF4285F4), Color(0xFF34A853)]),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.auto_awesome,
                       color: AppTheme.surface, size: 14),
-                  SizedBox(width: 6),
+                  const SizedBox(width: 6),
                   Text('Gemini AI is working...',
                       style:
                       TextStyle(color: AppTheme.surface, fontSize: 13)),
@@ -444,7 +443,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
                                 ]),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('AI Parsed',
+                          child: Text('AI Parsed',
                               style: TextStyle(
                                   color: AppTheme.surface,
                                   fontSize: 11,
@@ -452,7 +451,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text('${_items.length} items found',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 13)),
                       ],
@@ -460,7 +459,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Total: Rs ${total.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.primary),
@@ -499,7 +498,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
         // Bottom bar
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppTheme.surface,
             border: Border(top: BorderSide(color: AppTheme.divider)),
           ),
@@ -549,7 +548,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
                   color: AppTheme.errorColor, size: 36),
             ),
             const SizedBox(height: 20),
-            const Text('Scan Failed',
+            Text('Scan Failed',
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -558,7 +557,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
             Text(
               _statusMessage,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
                   height: 1.5),
@@ -630,12 +629,12 @@ class _PickerCard extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w600)),
                     Text(subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13, color: AppTheme.textSecondary)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
+              Icon(Icons.chevron_right,
                   color: AppTheme.textSecondary),
             ],
           ),
@@ -711,7 +710,7 @@ class _ItemCard extends StatelessWidget {
                           TextStyle(color: AppTheme.errorColor)),
                     ])),
               ],
-              icon: const Icon(Icons.more_vert,
+              icon: Icon(Icons.more_vert,
                   size: 18, color: AppTheme.textSecondary),
             ),
           ],

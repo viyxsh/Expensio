@@ -73,7 +73,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Tap + to add a personal expense\nor add one from a group',
                           textAlign: TextAlign.center,
                           style: TextStyle(
@@ -132,7 +132,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         icon: const Icon(Icons.add),
         label: const Text('New Transaction'),
         backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.black,
+        foregroundColor: AppTheme.onPrimary,
       ),
     );
   }
@@ -362,7 +362,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_periodLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.textPrimary)),
@@ -374,11 +374,11 @@ class _ChartsSectionState extends State<_ChartsSection> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.show_chart,
+                          Icon(Icons.show_chart,
                               size: 26, color: AppTheme.surfaceMid),
                           const SizedBox(height: 8),
                           Text('No spending $_periodNoun',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
                                   color: AppTheme.textSecondary)),
                         ],
@@ -421,7 +421,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                                 padding: const EdgeInsets.only(top: 6),
                                 child: Text(
                                   barData[i].label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
                                     color: AppTheme.textSecondary,
                                     fontWeight: FontWeight.w500,
@@ -463,7 +463,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                             if (rod.toY == 0) return null;
                             return BarTooltipItem(
                               '${AppSettings.currencySymbol} ${rod.toY.toStringAsFixed(0)}',
-                              const TextStyle(
+                              TextStyle(
                                 color: AppTheme.surface,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -492,7 +492,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('By Category',
+                  Text('By Category',
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -538,7 +538,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                                 title: isTouched
                                     ? '${pct.toStringAsFixed(0)}%'
                                     : '',
-                                titleStyle: const TextStyle(
+                                titleStyle: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.surface,
@@ -558,7 +558,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700),
                                 ),
-                                const Text('total',
+                                Text('total',
                                     style: TextStyle(
                                         fontSize: 9,
                                         color: AppTheme.textSecondary)),
@@ -590,7 +590,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                                   Expanded(
                                     child: Text(
                                       e.key,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 11,
                                           color: AppTheme.textPrimary),
                                       overflow: TextOverflow.ellipsis,
@@ -598,7 +598,7 @@ class _ChartsSectionState extends State<_ChartsSection> {
                                   ),
                                   Text(
                                     '${pct.toStringAsFixed(0)}%',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                       color: AppTheme.textSecondary,
@@ -710,7 +710,7 @@ class _PeriodSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: sel ? Colors.black : AppTheme.textSecondary,
+                    color: sel ? AppTheme.onPrimary : AppTheme.textSecondary,
                   ),
                 ),
               ),
@@ -747,13 +747,13 @@ class _SummaryTile extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(value,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary)),
           ),
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 10, color: AppTheme.textSecondary)),
         ],
       ),
@@ -811,7 +811,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: sel ? Colors.black : AppTheme.textSecondary,
+                  color: sel ? AppTheme.onPrimary : AppTheme.textSecondary,
                 ),
               ),
             ),
@@ -838,7 +838,7 @@ class _DateHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
@@ -954,7 +954,7 @@ class _TransactionTile extends StatelessWidget {
                         : 'Paid by $payerName'
                             '${groupName.isNotEmpty ? '  •  $groupName' : ''}',
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 11, color: AppTheme.textSecondary),
                   ),
                 ),
@@ -969,13 +969,13 @@ class _TransactionTile extends StatelessWidget {
             children: [
               Text(
                 Money.withSymbol(expense.totalAmount, decimals: 0),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary),
               ),
               if (isGroup)
-                const Text('total',
+                Text('total',
                     style: TextStyle(
                         fontSize: 10, color: AppTheme.textSecondary)),
             ],

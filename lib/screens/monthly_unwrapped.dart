@@ -169,12 +169,12 @@ class MonthlyUnwrappedCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(persona.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: AppTheme.textPrimary)),
                         Text('Your ${w.topCategory} era',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.textSecondary)),
                       ],
@@ -196,7 +196,7 @@ class MonthlyUnwrappedCard extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  const Text('Tap to see your month',
+                  Text('Tap to see your month',
                       style: TextStyle(
                           fontSize: 12, color: AppTheme.textSecondary)),
                   const Spacer(),
@@ -214,7 +214,7 @@ class MonthlyUnwrappedCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 12),
         width: 3,
         height: 3,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
             color: AppTheme.textSecondary, shape: BoxShape.circle),
       );
 
@@ -222,12 +222,12 @@ class MonthlyUnwrappedCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(value,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary)),
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 10, color: AppTheme.textSecondary)),
         ],
       );

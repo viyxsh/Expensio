@@ -3,15 +3,40 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color bg          = Color(0xFF0A0A0A); // true near-black scaffold
-  static const Color surface     = Color(0xFF141414); // cards / app-bar
-  static const Color surfaceHigh = Color(0xFF1E1E1E); // elevated surfaces
-  static const Color surfaceMid  = Color(0xFF252525); // inputs, chips
-  static const Color primary     = Color(0xFFFFFFFF); // white = primary action
-  static const Color primaryDark = Color(0xFFE0E0E0);
-  static const Color textPrimary   = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF8A8A8A);
-  static const Color divider       = Color(0xFF2A2A2A);
+  /// Active brightness. The app root sets this before building [theme] so the
+  /// colour getters below resolve to the matching palette everywhere they're
+  /// referenced (the app uses static colour refs rather than Theme.of(context)).
+  static Brightness brightness = Brightness.dark;
+  static bool get isDark => brightness == Brightness.dark;
+
+  static Color _pick(Color dark, Color light) => isDark ? dark : light;
+
+  // Brightness-dependent palette.
+  static Color get bg =>
+      _pick(const Color(0xFF0A0A0A), const Color(0xFFF6F6F8));
+  static Color get surface =>
+      _pick(const Color(0xFF141414), const Color(0xFFFFFFFF));
+  static Color get surfaceHigh =>
+      _pick(const Color(0xFF1E1E1E), const Color(0xFFFFFFFF));
+  static Color get surfaceMid =>
+      _pick(const Color(0xFF252525), const Color(0xFFECECF0));
+  static Color get primary =>
+      _pick(const Color(0xFFFFFFFF), const Color(0xFF0A0A0A));
+  static Color get primaryDark =>
+      _pick(const Color(0xFFE0E0E0), const Color(0xFF2A2A2A));
+
+  /// Foreground that sits on top of [primary] (e.g. button labels).
+  static Color get onPrimary =>
+      _pick(const Color(0xFF0A0A0A), const Color(0xFFFFFFFF));
+
+  static Color get textPrimary =>
+      _pick(const Color(0xFFFFFFFF), const Color(0xFF111114));
+  static Color get textSecondary =>
+      _pick(const Color(0xFF8A8A8A), const Color(0xFF6B6B72));
+  static Color get divider =>
+      _pick(const Color(0xFF2A2A2A), const Color(0xFFE4E4EA));
+
+  // Brightness-independent accents / status.
   static const Color errorColor    = Color(0xFFFF5252);
   static const Color successColor  = Color(0xFF69F0AE);
   static const Color warningColor  = Color(0xFFFFD740);
@@ -32,32 +57,38 @@ class AppTheme {
   static Color categoryColor(String category) =>
       categoryColors[category] ?? const Color(0xFF78909C);
 
-  // cardBg alias 
-  static const Color cardBg = surface;
+  // cardBg alias
+  static Color get cardBg => surface;
 
   static ThemeData get theme {
-    // Force dark system UI overlays
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    final overlay = isDark ? Brightness.light : Brightness.dark;
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: overlay,
+      statusBarBrightness: brightness,
       systemNavigationBarColor: surface,
-      systemNavigationBarIconBrightness: Brightness.light,
+      systemNavigationBarIconBrightness: overlay,
     ));
 
     final base = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
+      brightness: brightness,
+      colorScheme: ColorScheme(
+        brightness: brightness,
         primary: primary,
-        onPrimary: Color(0xFF0A0A0A),
+        onPrimary: onPrimary,
         secondary: primary,
-        onSecondary: Color(0xFF0A0A0A),
+        onSecondary: onPrimary,
         surface: surface,
         onSurface: textPrimary,
         error: errorColor,
+        onError: Colors.white,
         outline: divider,
       ),
     );
+
+    final appBarOverlay =
+        isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
 
     return base.copyWith(
       scaffoldBackgroundColor: bg,
@@ -73,14 +104,14 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: appBarOverlay,
         titleTextStyle: GoogleFonts.poppins(
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.3,
         ),
-        iconTheme: const IconThemeData(color: textPrimary),
+        iconTheme: IconThemeData(color: textPrimary),
       ),
 
       cardTheme: CardThemeData(
@@ -88,7 +119,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: divider, width: 1),
+          side: BorderSide(color: divider, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -96,7 +127,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
-          foregroundColor: const Color(0xFF0A0A0A),
+          foregroundColor: onPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -111,7 +142,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
-          side: const BorderSide(color: primary, width: 1.5),
+          side: BorderSide(color: primary, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
@@ -130,15 +161,15 @@ class AppTheme {
         fillColor: surfaceMid,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: divider),
+          borderSide: BorderSide(color: divider),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: divider),
+          borderSide: BorderSide(color: divider),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primary, width: 1.5),
+          borderSide: BorderSide(color: primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -157,23 +188,23 @@ class AppTheme {
 
       chipTheme: ChipThemeData(
         backgroundColor: surfaceMid,
-        selectedColor: primary.withOpacity(0.15),
+        selectedColor: primary.withValues(alpha: 0.15),
         disabledColor: surfaceMid,
         labelStyle: GoogleFonts.poppins(fontSize: 13, color: textPrimary),
         secondaryLabelStyle:
-        GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF0A0A0A)),
+        GoogleFonts.poppins(fontSize: 13, color: onPrimary),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: divider),
+          side: BorderSide(color: divider),
         ),
-        checkmarkColor: const Color(0xFF0A0A0A),
+        checkmarkColor: onPrimary,
       ),
 
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
               (s) => s.contains(WidgetState.selected)
-              ? const Color(0xFF0A0A0A)
+              ? onPrimary
               : textSecondary,
         ),
         trackColor: WidgetStateProperty.resolveWith(
@@ -182,7 +213,7 @@ class AppTheme {
         ),
       ),
 
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         color: divider, thickness: 1, space: 1,
       ),
 
@@ -207,15 +238,15 @@ class AppTheme {
         elevation: 4,
       ),
 
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary,
-        foregroundColor: Color(0xFF0A0A0A),
+        foregroundColor: onPrimary,
         elevation: 2,
       ),
 
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
-        indicatorColor: primary.withOpacity(0.12),
+        indicatorColor: primary.withValues(alpha: 0.12),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return GoogleFonts.poppins(
@@ -226,18 +257,18 @@ class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: primary, size: 22);
+            return IconThemeData(color: primary, size: 22);
           }
-          return const IconThemeData(color: textSecondary, size: 22);
+          return IconThemeData(color: textSecondary, size: 22);
         }),
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
       ),
 
-      bottomSheetTheme: const BottomSheetThemeData(
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
       ),
@@ -256,7 +287,7 @@ class AppTheme {
         color: surfaceHigh,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: divider),
+          side: BorderSide(color: divider),
         ),
         textStyle:
         GoogleFonts.poppins(fontSize: 13, color: textPrimary),
@@ -269,7 +300,7 @@ class AppTheme {
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: divider),
+              side: BorderSide(color: divider),
             ),
           ),
         ),
@@ -280,13 +311,11 @@ class AppTheme {
         headerBackgroundColor: surface,
         headerForegroundColor: textPrimary,
         dayForegroundColor: WidgetStateProperty.resolveWith((s) =>
-        s.contains(WidgetState.selected)
-            ? const Color(0xFF0A0A0A)
-            : textPrimary),
+        s.contains(WidgetState.selected) ? onPrimary : textPrimary),
         dayBackgroundColor: WidgetStateProperty.resolveWith((s) =>
         s.contains(WidgetState.selected) ? primary : Colors.transparent),
         todayForegroundColor: WidgetStateProperty.all(primary),
-        todayBorder: const BorderSide(color: primary),
+        todayBorder: BorderSide(color: primary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         dayStyle: GoogleFonts.poppins(fontSize: 13),
         yearStyle: GoogleFonts.poppins(fontSize: 13),
@@ -298,7 +327,7 @@ class AppTheme {
         backgroundColor: surfaceHigh,
         dialBackgroundColor: surfaceMid,
         dialHandColor: primary,
-        dialTextColor: textPrimary,
+        dialTextColor: onPrimary,
         hourMinuteColor: surfaceMid,
         hourMinuteTextColor: textPrimary,
         dayPeriodColor: surfaceMid,
@@ -328,7 +357,7 @@ class SectionHeader extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
@@ -377,7 +406,7 @@ class InfoCard extends StatelessWidget {
               Flexible(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11, color: AppTheme.textSecondary),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -514,20 +543,20 @@ class DateTimePicker extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined,
+            Icon(Icons.calendar_today_outlined,
                 size: 16, color: AppTheme.textSecondary),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 '$dateStr  $timeStr',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: AppTheme.textPrimary,
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right,
+            Icon(Icons.chevron_right,
                 size: 16, color: AppTheme.textSecondary),
           ],
         ),

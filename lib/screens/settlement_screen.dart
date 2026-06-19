@@ -173,7 +173,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 ),
                 child: Text(
                   '${settlements.length} payment${settlements.length != 1 ? 's' : ''}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textSecondary),
@@ -260,20 +260,20 @@ class _SettlementScreenState extends State<SettlementScreen> {
           return Column(
             children: [
               if (i > 0)
-                const Divider(height: 1, indent: 16, color: AppTheme.divider),
+                Divider(height: 1, indent: 16, color: AppTheme.divider),
               ListTile(
                 leading: const Icon(Icons.check_circle,
                     color: AppTheme.successColor, size: 20),
                 title: Text(label,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: AppTheme.textPrimary)),
                 subtitle: Text(Money.withSymbol(s.amountCents),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12, color: AppTheme.textSecondary)),
                 trailing: IconButton(
-                  icon: const Icon(Icons.undo,
+                  icon: Icon(Icons.undo,
                       size: 18, color: AppTheme.textSecondary),
                   onPressed: () => _removeSettlement(
                     s,
@@ -306,7 +306,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
       ),
       child: Column(
         children: [
-          const Text('Outstanding Balance',
+          Text('Outstanding Balance',
               style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 12,
@@ -314,7 +314,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
           const SizedBox(height: 6),
           Text(
             Money.withSymbol(totalOwed),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppTheme.textPrimary,
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -381,7 +381,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                               : AppTheme.errorColor)),
                 ),
                 title: Text(name,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w500,
                         color: AppTheme.textPrimary)),
                 subtitle: Text(
@@ -390,7 +390,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                         : isZero
                         ? 'All settled'
                         : 'Should pay',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12, color: AppTheme.textSecondary)),
                 trailing: isZero
                     ? const Icon(Icons.check_circle,
@@ -422,17 +422,17 @@ class _SettlementScreenState extends State<SettlementScreen> {
         border: Border.all(
             color: AppTheme.successColor.withOpacity(0.2)),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(Icons.check_circle_outline,
+          const Icon(Icons.check_circle_outline,
               color: AppTheme.successColor, size: 48),
-          SizedBox(height: 12),
-          Text('All Settled',
+          const SizedBox(height: 12),
+          const Text('All Settled',
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.successColor)),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text('Everyone is even. No payments needed.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -452,7 +452,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome_outlined,
+          Icon(Icons.auto_awesome_outlined,
               color: AppTheme.textSecondary, size: 18),
           const SizedBox(width: 10),
           Expanded(
@@ -460,7 +460,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
               count == 0
                   ? 'Everyone is even — no payments needed.'
                   : 'Simplified to $count payment${count != 1 ? 's' : ''} — the fewest needed to settle up.',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, color: AppTheme.textSecondary),
             ),
           ),
@@ -479,12 +479,12 @@ class _BannerStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(children: [
       Text(value,
-          style: const TextStyle(
+          style: TextStyle(
               color: AppTheme.textPrimary,
               fontSize: 20,
               fontWeight: FontWeight.w700)),
       Text(label,
-          style: const TextStyle(
+          style: TextStyle(
               color: AppTheme.textSecondary, fontSize: 10)),
     ]);
   }
@@ -521,12 +521,12 @@ class _SettlementCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(settlement.fromName,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppTheme.textPrimary),
                     textAlign: TextAlign.center),
-                const Text('pays',
+                Text('pays',
                     style: TextStyle(
                         fontSize: 11, color: AppTheme.textSecondary)),
               ],
@@ -540,7 +540,7 @@ class _SettlementCard extends StatelessWidget {
               children: [
                 Text(
                   Money.withSymbol(settlement.amount),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.textPrimary,
@@ -554,7 +554,7 @@ class _SettlementCard extends StatelessWidget {
                         child: Container(
                             height: 1,
                             color: AppTheme.divider)),
-                    const Icon(Icons.arrow_forward,
+                    Icon(Icons.arrow_forward,
                         color: AppTheme.textSecondary, size: 18),
                   ],
                 ),
@@ -576,12 +576,12 @@ class _SettlementCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(settlement.toName,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppTheme.textPrimary),
                     textAlign: TextAlign.center),
-                const Text('receives',
+                Text('receives',
                     style: TextStyle(
                         fontSize: 11, color: AppTheme.textSecondary)),
               ],
@@ -647,7 +647,7 @@ class _PendingCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   '$fromName → $toName',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary),
@@ -655,7 +655,7 @@ class _PendingCard extends StatelessWidget {
               ),
               Text(
                 Money.withSymbol(settlement.amountCents),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.textPrimary),

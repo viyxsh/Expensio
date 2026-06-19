@@ -128,14 +128,14 @@ class _AddPersonalExpenseScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Amount',
+                  Text('Amount',
                       style: TextStyle(
                           color: AppTheme.textSecondary, fontSize: 12)),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      const Text('Rs ',
+                      Text('Rs ',
                           style: TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 22,
@@ -145,7 +145,7 @@ class _AddPersonalExpenseScreenState
                           controller: _amountCtrl,
                           keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 40,
                             fontWeight: FontWeight.w700,

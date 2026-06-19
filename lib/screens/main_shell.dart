@@ -29,7 +29,7 @@ class _MainShellState extends State<MainShell> {
         children: screens,
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppTheme.surface,
           border: Border(top: BorderSide(color: AppTheme.divider, width: 1)),
         ),
@@ -41,20 +41,20 @@ class _MainShellState extends State<MainShell> {
           shadowColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
-          destinations: const [
+          destinations: [
             NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
+              icon: const Icon(Icons.receipt_long_outlined),
               selectedIcon:
               Icon(Icons.receipt_long, color: AppTheme.primary),
               label: 'Transactions',
             ),
             NavigationDestination(
-              icon: Icon(Icons.group_outlined),
+              icon: const Icon(Icons.group_outlined),
               selectedIcon: Icon(Icons.group, color: AppTheme.primary),
               label: 'Groups',
             ),
             NavigationDestination(
-              icon: Icon(Icons.more_horiz_outlined),
+              icon: const Icon(Icons.more_horiz_outlined),
               selectedIcon:
               Icon(Icons.more_horiz, color: AppTheme.primary),
               label: 'More',

@@ -73,7 +73,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   ? 'Create an account to access your groups on any device. '
                       'Your current data stays with you.'
                   : 'Sign in to load your account on this device.',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
             ),
             const SizedBox(height: 24),
@@ -144,11 +144,11 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Row(
+            Row(
               children: [
                 Expanded(child: Divider(color: AppTheme.divider)),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text('or',
                       style: TextStyle(
                           fontSize: 12, color: AppTheme.textSecondary)),

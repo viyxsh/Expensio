@@ -100,10 +100,10 @@ class _MoreScreenState extends State<MoreScreen> {
                     title: Text(c['name']!,
                         style: const TextStyle(fontSize: 14)),
                     subtitle: Text(c['code']!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12, color: AppTheme.textSecondary)),
                     trailing: current == c['code']
-                        ? const Icon(Icons.check_circle,
+                        ? Icon(Icons.check_circle,
                             color: AppTheme.primary, size: 20)
                         : null,
                     onTap: () {
@@ -119,7 +119,67 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  // Monthly history 
+  // Appearance / theme
+
+  String _themeLabel(String mode) => switch (mode) {
+        'light' => 'Light',
+        'dark' => 'Dark',
+        _ => 'System default',
+      };
+
+  void _showThemePicker() {
+    const options = [
+      ('system', 'System default', Icons.brightness_auto_outlined),
+      ('light', 'Light', Icons.light_mode_outlined),
+      ('dark', 'Dark', Icons.dark_mode_outlined),
+    ];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => ValueListenableBuilder(
+        valueListenable: Hive.box('settings').listenable(),
+        builder: (_, __, ___) {
+          final current = AppSettings.themeMode;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetHandle(),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Appearance',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              for (final (mode, label, icon) in options)
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                  leading: Icon(icon, color: AppTheme.textSecondary),
+                  title: Text(label, style: const TextStyle(fontSize: 14)),
+                  trailing: current == mode
+                      ? Icon(Icons.check_circle,
+                          color: AppTheme.primary, size: 20)
+                      : null,
+                  onTap: () {
+                    AppSettings.setThemeMode(mode);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // Monthly history
 
   void _showMonthlyHistory(List<ExpenseModel> allExpenses) {
     final Map<String, int> monthly = {};
@@ -201,7 +261,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                     fontWeight: FontWeight.w500)),
                             Text(
                               Money.withSymbol(entry.value, decimals: 0),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.primary),
@@ -214,7 +274,7 @@ class _MoreScreenState extends State<MoreScreen> {
                           child: LinearProgressIndicator(
                             value: pct,
                             backgroundColor: AppTheme.divider,
-                            valueColor: const AlwaysStoppedAnimation(
+                            valueColor: AlwaysStoppedAnimation(
                                 AppTheme.primary),
                             minHeight: 6,
                           ),
@@ -427,12 +487,12 @@ class _MoreScreenState extends State<MoreScreen> {
                               crossAxisAlignment:
                                   CrossAxisAlignment.start,
                               children: [
-                                const Row(
+                                Row(
                                   children: [
                                     Icon(Icons.payments_outlined,
                                         size: 13,
                                         color: AppTheme.textSecondary),
-                                    SizedBox(width: 3),
+                                    const SizedBox(width: 3),
                                     Expanded(
                                       child: Text('This Month',
                                           style: TextStyle(
@@ -440,7 +500,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                               color: AppTheme.textSecondary),
                                           overflow: TextOverflow.ellipsis),
                                     ),
-                                    SizedBox(width: 3),
+                                    const SizedBox(width: 3),
                                     Icon(Icons.chevron_right,
                                         size: 14,
                                         color: AppTheme.textSecondary),
@@ -452,7 +512,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   alignment: Alignment.centerLeft,
                                   child: Text(
                                     '$sym ${_compact(Money.toMajor(monthTotal))}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w700,
                                         color: AppTheme.textPrimary),
@@ -493,6 +553,14 @@ class _MoreScreenState extends State<MoreScreen> {
                   const SectionHeader(title: 'Settings'),
                   const SizedBox(height: 8),
                   _Section(children: [
+                    _SettingsTile(
+                      icon: AppTheme.isDark
+                          ? Icons.dark_mode_outlined
+                          : Icons.light_mode_outlined,
+                      title: 'Appearance',
+                      subtitle: _themeLabel(AppSettings.themeMode),
+                      onTap: _showThemePicker,
+                    ),
                     _SettingsTile(
                       icon: Icons.currency_exchange,
                       title: 'Currency',
@@ -571,7 +639,7 @@ class _Section extends StatelessWidget {
           return Column(
             children: [
               if (e.key > 0)
-                const Divider(height: 1, indent: 56, color: AppTheme.divider),
+                Divider(height: 1, indent: 56, color: AppTheme.divider),
               e.value,
             ],
           );
@@ -628,7 +696,7 @@ class _AccountCard extends StatelessWidget {
                     fontSize: 15, fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis),
             subtitle: Text(subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12, color: AppTheme.textSecondary),
                 overflow: TextOverflow.ellipsis),
             trailing: signedIn
@@ -686,10 +754,10 @@ class _SettingsTile extends StatelessWidget {
               fontWeight: FontWeight.w500,
               color: textColor ?? AppTheme.textPrimary)),
       subtitle: Text(subtitle,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 12, color: AppTheme.textSecondary)),
       trailing: onTap != null
-          ? const Icon(Icons.chevron_right,
+          ? Icon(Icons.chevron_right,
               color: AppTheme.textSecondary, size: 18)
           : null,
       onTap: onTap,
@@ -730,7 +798,7 @@ class _NotifTile extends StatelessWidget {
           style: const TextStyle(
               fontSize: 14, fontWeight: FontWeight.w500)),
       subtitle: Text(subtitle,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 12, color: AppTheme.textSecondary)),
       trailing: Switch(
         value: value,

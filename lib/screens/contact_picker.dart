@@ -86,7 +86,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
                           fontSize: 17, fontWeight: FontWeight.w700)),
                   const Spacer(),
                   Text('${_selected.length} selected',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12, color: AppTheme.textSecondary)),
                 ],
               ),
