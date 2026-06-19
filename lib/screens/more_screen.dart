@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
@@ -588,12 +589,15 @@ class _MoreScreenState extends State<MoreScreen> {
                   const SectionHeader(title: 'Data'),
                   const SizedBox(height: 8),
                   _Section(children: [
-                    _SettingsTile(
-                      icon: Icons.download_outlined,
-                      title: 'Export Data',
-                      subtitle: 'Save as JSON file',
-                      onTap: _exportData,
-                    ),
+                    // Export writes a temp file via path_provider, which isn't
+                    // available on web.
+                    if (!kIsWeb)
+                      _SettingsTile(
+                        icon: Icons.download_outlined,
+                        title: 'Export Data',
+                        subtitle: 'Save as JSON file',
+                        onTap: _exportData,
+                      ),
                     _SettingsTile(
                       icon: Icons.delete_sweep_outlined,
                       title: 'Clear All Data',

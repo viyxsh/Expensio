@@ -16,6 +16,7 @@ class NotificationService {
   );
 
   static Future<void> init() async {
+    if (kIsWeb) return; // local notifications aren't supported on web
     try {
       tz_data.initializeTimeZones();
       final tzInfo = await FlutterTimezone.getLocalTimezone();
@@ -39,6 +40,7 @@ class NotificationService {
 
   /// Returns true if permission was granted (or already granted)
   static Future<bool> requestPermission() async {
+    if (kIsWeb) return false;
     try {
       final ios = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
@@ -61,6 +63,7 @@ class NotificationService {
   }
 
   static Future<void> scheduleSettlementReminder(bool enable) async {
+    if (kIsWeb) return;
     if (!enable) {
       await _plugin.cancel(1);
       return;
@@ -74,6 +77,7 @@ class NotificationService {
   }
 
   static Future<void> scheduleDailyTransactionReminder(bool enable) async {
+    if (kIsWeb) return;
     if (!enable) {
       await _plugin.cancel(2);
       return;

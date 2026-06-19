@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/group_model.dart';
@@ -258,12 +259,15 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Add a name'),
                 ),
-                const SizedBox(width: 4),
-                TextButton.icon(
-                  onPressed: _addFromContacts,
-                  icon: const Icon(Icons.contacts_outlined, size: 18),
-                  label: const Text('From contacts'),
-                ),
+                // Phone contacts aren't available on web.
+                if (!kIsWeb) ...[
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    onPressed: _addFromContacts,
+                    icon: const Icon(Icons.contacts_outlined, size: 18),
+                    label: const Text('From contacts'),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 8),

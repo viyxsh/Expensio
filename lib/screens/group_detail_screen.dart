@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../models/group_model.dart';
 import '../models/expense_model.dart';
@@ -254,17 +255,21 @@ class GroupDetailScreen extends StatelessWidget {
             label: const Text('Add Expense'),
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        BillScanScreen(group: g, members: members))),
-            icon: const Icon(Icons.document_scanner_outlined, size: 18),
-            label: const Text('Scan Bill'),
+        // Bill scanning uses the camera + on-device ML Kit OCR, neither of
+        // which is available on web.
+        if (!kIsWeb) ...[
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          BillScanScreen(group: g, members: members))),
+              icon: const Icon(Icons.document_scanner_outlined, size: 18),
+              label: const Text('Scan Bill'),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
