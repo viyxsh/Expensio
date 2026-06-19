@@ -92,6 +92,7 @@ class FirestoreRepository implements ExpensioRepository {
         'category': e.category,
         'isPersonal': e.isPersonal,
         'splitMap': e.splitMap,
+        'createdBy': e.createdBy,
         'visibleTo': _visibleTo(e),
       };
 
@@ -113,6 +114,7 @@ class FirestoreRepository implements ExpensioRepository {
       isPersonal: d['isPersonal'] as bool? ?? false,
       splitMap: (d['splitMap'] as Map? ?? const {})
           .map((k, v) => MapEntry(k as String, (v as num).toInt())),
+      createdBy: d['createdBy'] as String? ?? '',
     );
   }
 
@@ -386,6 +388,7 @@ class FirestoreRepository implements ExpensioRepository {
       category: e.category,
       isPersonal: e.isPersonal,
       splitMap: split,
+      createdBy: id(e.createdBy),
     );
   }
 

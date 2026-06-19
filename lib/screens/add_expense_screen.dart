@@ -25,6 +25,8 @@ class AddExpenseScreen extends StatefulWidget {
   final List<UserModel> members;
   final List<BillItem>? prefillItems;
   final double? prefillTotal;
+  /// When set, the screen edits this expense in place instead of creating one.
+  final ExpenseModel? existing;
 
   const AddExpenseScreen({
     super.key,
@@ -32,6 +34,7 @@ class AddExpenseScreen extends StatefulWidget {
     required this.members,
     this.prefillItems,
     this.prefillTotal,
+    this.existing,
   });
 
   @override
@@ -78,6 +81,51 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _selectedCategory = _dominantCategory(_items);
     } else if (widget.prefillTotal != null) {
       _amountCtrl.text = widget.prefillTotal!.toStringAsFixed(2);
+    }
+
+    final ex = widget.existing;
+    if (ex != null) _prefillFromExisting(ex);
+  }
+
+  void _prefillFromExisting(ExpenseModel ex) {
+    _titleCtrl.text = ex.title;
+    _amountCtrl.text = Money.toMajor(ex.totalAmount).toStringAsFixed(2);
+    _selectedCategory =
+        _categories.contains(ex.category) ? ex.category : 'General';
+    _payerId = ex.payerId;
+    _selectedParticipants
+      ..clear()
+      ..addAll(ex.participantIds);
+    _selectedDateTime = ex.createdAt;
+    _items = List.from(ex.items);
+
+    // Decide whether the saved split is just an equal split or a real custom
+    // one; load custom splits as locked fixed amounts so they're preserved.
+    final sm = ex.splitMap;
+    final ids = ex.participantIds;
+    var isEqual = sm.isEmpty;
+    if (sm.isNotEmpty && sm.length == ids.length) {
+      final shares = Money.splitEqual(ex.totalAmount, ids.length);
+      isEqual = true;
+      for (var i = 0; i < ids.length; i++) {
+        if (sm[ids[i]] != shares[i]) {
+          isEqual = false;
+          break;
+        }
+      }
+    }
+    if (isEqual) {
+      _splitEqually = true;
+      _resetEqualSplit();
+    } else {
+      _splitEqually = false;
+      for (final id in ids) {
+        final sd = _splitData[id];
+        if (sd == null) continue;
+        sd.type = _SplitType.fixed;
+        sd.locked = true;
+        sd.ctrl.text = Money.toMajor(sm[id] ?? 0).toStringAsFixed(2);
+      }
     }
   }
 
@@ -224,8 +272,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       split[firstKey] = split[firstKey]! + drift;
     }
 
+    final existing = widget.existing;
     final expense = ExpenseModel(
-      id: _uuid.v4(),
+      id: existing?.id ?? _uuid.v4(),
       title: _titleCtrl.text.trim(),
       totalAmount: _totalCents,
       payerId: _payerId!,
@@ -236,14 +285,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       category: _selectedCategory,
       isPersonal: false,
       splitMap: split,
+      createdBy: existing?.ownerId ?? Services.currentUserId,
     );
 
     try {
       await Services.state.saveExpense(expense);
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Expense added')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                existing != null ? 'Expense updated' : 'Expense added')));
       }
     } catch (e, st) {
       debugPrint('[Expensio] Error saving group expense: $e\n$st');
@@ -262,7 +313,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Expense'),
+        title: Text(widget.existing != null ? 'Edit Expense' : 'Add Expense'),
         actions: [
           TextButton(
             onPressed: _save,
@@ -398,7 +449,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _save,
-                child: const Text('Save Expense'),
+                child: Text(
+                    widget.existing != null ? 'Save Changes' : 'Save Expense'),
               ),
             ),
             const SizedBox(height: 40),

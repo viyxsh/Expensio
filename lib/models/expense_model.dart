@@ -40,6 +40,11 @@ class ExpenseModel extends HiveObject {
   @HiveField(10)
   Map<String, int> splitMap;
 
+  /// User id who created this expense. Drives who may edit/delete it. Empty for
+  /// legacy expenses (callers fall back to [payerId]).
+  @HiveField(11, defaultValue: '')
+  String createdBy;
+
   ExpenseModel({
     required this.id,
     required this.title,
@@ -52,6 +57,10 @@ class ExpenseModel extends HiveObject {
     this.category = 'General',
     this.isPersonal = false,
     Map<String, int>? splitMap,
+    this.createdBy = '',
   })  : items = items ?? [],
         splitMap = splitMap ?? {};
+
+  /// The id that controls edit/delete rights (creator, or payer for legacy).
+  String get ownerId => createdBy.isNotEmpty ? createdBy : payerId;
 }

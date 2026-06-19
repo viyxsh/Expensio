@@ -28,13 +28,14 @@ class ExpenseModelAdapter extends TypeAdapter<ExpenseModel> {
       category: fields[8] as String,
       isPersonal: fields[9] as bool,
       splitMap: (fields[10] as Map?)?.cast<String, int>(),
+      createdBy: fields[11] == null ? '' : fields[11] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ExpenseModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +57,9 @@ class ExpenseModelAdapter extends TypeAdapter<ExpenseModel> {
       ..writeByte(9)
       ..write(obj.isPersonal)
       ..writeByte(10)
-      ..write(obj.splitMap);
+      ..write(obj.splitMap)
+      ..writeByte(11)
+      ..write(obj.createdBy);
   }
 
   @override

@@ -138,6 +138,20 @@ class GroupDetailScreen extends StatelessWidget {
                         child: _ExpenseCard(
                           expense: expenses[i],
                           members: members,
+                          // Only the creator (or payer, for legacy expenses)
+                          // may edit or delete it.
+                          canManage: expenses[i].ownerId ==
+                              Services.currentUserId,
+                          onEdit: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AddExpenseScreen(
+                                group: g,
+                                members: members,
+                                existing: expenses[i],
+                              ),
+                            ),
+                          ),
                           onDelete: () =>
                               Services.state.deleteExpense(expenses[i].id),
                         ),
@@ -303,13 +317,38 @@ class _BalanceBadge extends StatelessWidget {
 class _ExpenseCard extends StatelessWidget {
   final ExpenseModel expense;
   final List<UserModel> members;
+  final bool canManage;
+  final VoidCallback? onEdit;
   final VoidCallback onDelete;
 
   const _ExpenseCard({
     required this.expense,
     required this.members,
     required this.onDelete,
+    this.canManage = false,
+    this.onEdit,
   });
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Expense'),
+        content: Text('Delete "${expense.title}"?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) onDelete();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -321,27 +360,7 @@ class _ExpenseCard extends StatelessWidget {
 
     return Card(
       child: InkWell(
-        onLongPress: () async {
-          final ok = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Delete Expense'),
-              content: Text('Delete "${expense.title}"?'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Cancel')),
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.errorColor),
-                  child: const Text('Delete'),
-                ),
-              ],
-            ),
-          );
-          if (ok == true) onDelete();
-        },
+        onLongPress: canManage ? () => _confirmDelete(context) : null,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -390,6 +409,22 @@ class _ExpenseCard extends StatelessWidget {
                   color: AppTheme.textPrimary,
                 ),
               ),
+              if (canManage)
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert,
+                      size: 18, color: AppTheme.textSecondary),
+                  onSelected: (v) {
+                    if (v == 'edit') {
+                      onEdit?.call();
+                    } else if (v == 'delete') {
+                      _confirmDelete(context);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                ),
             ],
           ),
         ),

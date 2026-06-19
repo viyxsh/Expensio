@@ -186,15 +186,19 @@ class _SettlementScreenState extends State<SettlementScreen> {
           if (settlements.isEmpty)
             _buildAllSettledCard()
           else
-            ...settlements.asMap().entries.map(
-                  (e) => Padding(
+            ...settlements.map((s) {
+              // Only the person being paid (or whoever manages a placeholder
+              // payee) can record a payment — not every group member.
+              final canMark =
+                  s.toId == Services.currentUserId || _isPlaceholder(s.toId);
+              return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _SettlementCard(
-                  settlement: e.value,
-                  onMarkPaid: () => _recordPayment(e.value),
+                  settlement: s,
+                  onMarkPaid: canMark ? () => _recordPayment(s) : null,
                 ),
-              ),
-            ),
+              );
+            }),
 
           if (pending.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -599,6 +603,11 @@ class _SettlementCard extends StatelessWidget {
             label: const Text('Mark as Paid'),
           ),
         ),
+      ] else ...[
+        const SizedBox(height: 10),
+        Text('Only ${settlement.toName} can mark this received',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
       ],
         ],
       ),

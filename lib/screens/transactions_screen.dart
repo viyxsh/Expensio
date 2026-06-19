@@ -32,18 +32,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       body: ListenableBuilder(
         listenable: Services.state,
         builder: (context, _) {
-          final all = Services.state.getAllExpenses();
-
-          // Current user's net balance per group, to approximate whether an
-          // owed share is settled. Computed once and shared across tiles.
           final uid = Services.currentUserId;
-          final myGroupNet = <String, int>{};
-          for (final gid in all
-              .where((e) => !e.isPersonal && e.groupId.isNotEmpty)
-              .map((e) => e.groupId)
-              .toSet()) {
-            myGroupNet[gid] = Services.state.computeBalances(gid)[uid] ?? 0;
-          }
+          // Only show expenses the user is actually part of: their personal
+          // ones, ones they paid, or ones they're in the split for. Expenses
+          // they're not in stay in the group, just not on their feed.
+          final all = Services.state.getAllExpenses().where((e) =>
+              e.isPersonal ||
+              e.payerId == uid ||
+              e.participantIds.contains(uid) ||
+              e.splitMap.containsKey(uid)).toList();
 
           final filtered = _filterCategory == 'All'
               ? all
@@ -125,11 +122,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         cursor++;
                         for (int j = 0; j < sec.items.length; j++) {
                           if (i == cursor) {
-                            final e = sec.items[j];
-                            return _TransactionTile(
-                              expense: e,
-                              groupNetForMe: myGroupNet[e.groupId] ?? 0,
-                            );
+                            return _TransactionTile(expense: sec.items[j]);
                           }
                           cursor++;
                         }
@@ -878,10 +871,7 @@ class _DateHeader extends StatelessWidget {
 // Transaction tile 
 class _TransactionTile extends StatelessWidget {
   final ExpenseModel expense;
-  /// The current user's net balance (cents) in this expense's group; >= 0 means
-  /// they're square, used to approximate whether an owed share is settled.
-  final int groupNetForMe;
-  const _TransactionTile({required this.expense, this.groupNetForMe = 0});
+  const _TransactionTile({required this.expense});
 
   @override
   Widget build(BuildContext context) {
@@ -1030,27 +1020,19 @@ class _TransactionTile extends StatelessWidget {
       );
     }
 
-    // Someone else paid: the shown amount is your owed share. "Settled" is
-    // approximated from your overall balance in the group (>= 0 means square).
+    // Someone else paid: the shown amount is your owed share. It stays pending
+    // until the debt is actually settled (via Settle Up), never auto-cleared.
     if (userShareOf(expense, uid) == 0) return const SizedBox.shrink();
-    final settled = groupNetForMe >= 0;
     const amber = Color(0xFFE0A52F);
-    return Row(
+    return const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (settled)
-          const Padding(
-            padding: EdgeInsets.only(right: 2),
-            child: Icon(Icons.check_circle,
-                size: 10, color: AppTheme.successColor),
-          ),
+        Icon(Icons.hourglass_top, size: 10, color: amber),
+        SizedBox(width: 2),
         Text(
-          settled ? 'settled' : 'you owe',
+          'Pending',
           style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: settled ? AppTheme.successColor : amber,
-          ),
+              fontSize: 10, fontWeight: FontWeight.w600, color: amber),
         ),
       ],
     );
