@@ -309,6 +309,16 @@ class BudgetSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to the settings box so the card updates the moment a budget is
+    // set/changed (the Transactions page only rebuilds on expense changes).
+    return ValueListenableBuilder(
+      valueListenable:
+          Hive.box('settings').listenable(keys: ['budget_overall']),
+      builder: (context, _, __) => _buildCard(context),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     final now = DateTime.now();
     final spent = BudgetMath.total(BudgetMath.spendByCategory(
         expenses, Services.currentUserId, now));
