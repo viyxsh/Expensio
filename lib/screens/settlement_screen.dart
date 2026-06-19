@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/group_model.dart';
-import '../models/user_model.dart';
 import '../models/settlement_model.dart';
 import '../services/services.dart';
 import '../services/settlement_service.dart';
@@ -37,8 +36,16 @@ class _SettlementScreenState extends State<SettlementScreen> {
     if (mounted) setState(() {});
   }
 
-  // Placeholder (dummy) members have uuid ids; real accounts are Firebase uids.
-  bool _isPlaceholder(String id) => id.contains('-');
+  // A placeholder (dummy) member has no real account to confirm a payment.
+  bool _isPlaceholder(String id) =>
+      Services.state.getUserById(id)?.isPlaceholder ?? false;
+
+  /// Display name for any id, including someone removed from the group who is
+  /// still referenced by past expenses. Never surface a raw uuid.
+  String _nameFor(String id) {
+    final n = Services.state.getUserById(id)?.name.trim() ?? '';
+    return n.isEmpty ? 'Former member' : n;
+  }
 
   /// A real account other than me must confirm; placeholders / my own slot are
   /// recorded straight away.
@@ -129,12 +136,11 @@ class _SettlementScreenState extends State<SettlementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final members = group.memberIds
-        .map(Services.state.getUserById)
-        .whereType<UserModel>()
-        .toList();
     final balances = Services.state.computeBalances(group.id);
-    final userNames = {for (final m in members) m.id: m.name};
+    // Resolve names for everyone with a balance, including members removed
+    // from the group who still appear in past expenses, so a settlement never
+    // shows a raw id.
+    final userNames = {for (final id in balances.keys) id: _nameFor(id)};
     final settlements =
     SettlementService.computeSettlements(balances, userNames);
     final allRecorded = Services.state.getSettlementsByGroup(group.id);
@@ -142,15 +148,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
     final confirmed = allRecorded.where((s) => s.isConfirmed).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settle Up'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => _showInfo(context),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Settle Up')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -159,7 +157,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
 
           const SectionHeader(title: 'Net Balances'),
           const SizedBox(height: 8),
-          _buildBalancesCard(balances, userNames),
+          _buildBalancesCard(balances),
           const SizedBox(height: 20),
 
           Row(
@@ -206,14 +204,14 @@ class _SettlementScreenState extends State<SettlementScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _PendingCard(
                     settlement: s,
-                    fromName: userNames[s.fromId] ?? s.fromId,
-                    toName: userNames[s.toId] ?? s.toId,
+                    fromName: _nameFor(s.fromId),
+                    toName: _nameFor(s.toId),
                     canConfirm: _canConfirm(s),
                     canCancel: s.markedById == Services.currentUserId,
                     onConfirm: () => _confirmSettlement(s),
                     onDispute: () => _removeSettlement(
                       s,
-                      '${userNames[s.fromId]} → ${userNames[s.toId]}',
+                      '${_nameFor(s.fromId)} → ${_nameFor(s.toId)}',
                       title: 'Dispute Payment',
                       body:
                           'Remove this pending payment? Use this if you didn\'t receive it.',
@@ -221,7 +219,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                     ),
                     onCancel: () => _removeSettlement(
                       s,
-                      '${userNames[s.fromId]} → ${userNames[s.toId]}',
+                      '${_nameFor(s.fromId)} → ${_nameFor(s.toId)}',
                       title: 'Cancel Payment',
                       body: 'Withdraw this pending payment?',
                       action: 'Withdraw',
@@ -234,7 +232,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
             const SizedBox(height: 20),
             const SectionHeader(title: 'Recorded Payments'),
             const SizedBox(height: 8),
-            _buildRecordedCard(confirmed, userNames),
+            _buildRecordedCard(confirmed),
           ],
 
           const SizedBox(height: 20),
@@ -245,8 +243,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
     );
   }
 
-  Widget _buildRecordedCard(
-      List<SettlementModel> recorded, Map<String, String> userNames) {
+  Widget _buildRecordedCard(List<SettlementModel> recorded) {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -257,8 +254,8 @@ class _SettlementScreenState extends State<SettlementScreen> {
         children: recorded.asMap().entries.map((e) {
           final i = e.key;
           final s = e.value;
-          final fromName = userNames[s.fromId] ?? s.fromId;
-          final toName = userNames[s.toId] ?? s.toId;
+          final fromName = _nameFor(s.fromId);
+          final toName = _nameFor(s.toId);
           final label = '$fromName → $toName';
           return Column(
             children: [
@@ -335,8 +332,8 @@ class _SettlementScreenState extends State<SettlementScreen> {
                   value: '${settlements.length}'),
               Container(width: 1, height: 28, color: AppTheme.divider),
               _BannerStat(
-                  label: 'Settled',
-                  value: settlements.isEmpty ? 'Yes' : 'No'),
+                  label: 'Status',
+                  value: settlements.isEmpty ? 'Settled' : 'Pending'),
             ],
           ),
         ],
@@ -344,8 +341,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
     );
   }
 
-  Widget _buildBalancesCard(
-      Map<String, int> balances, Map<String, String> userNames) {
+  Widget _buildBalancesCard(Map<String, int> balances) {
     final sorted = balances.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -360,7 +356,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
           final i = e.key;
           final userId = e.value.key;
           final balance = e.value.value;
-          final name = userNames[userId] ?? userId;
+          final name = _nameFor(userId);
           final isPos = balance > 0;
           final isZero = balance == 0;
 
@@ -456,14 +452,14 @@ class _SettlementScreenState extends State<SettlementScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.psychology_outlined,
+          const Icon(Icons.auto_awesome_outlined,
               color: AppTheme.textSecondary, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               count == 0
-                  ? 'No transactions needed — everyone is even.'
-                  : 'Algorithm minimized payments to $count transaction${count != 1 ? 's' : ''} using greedy + optimal backtracking.',
+                  ? 'Everyone is even — no payments needed.'
+                  : 'Simplified to $count payment${count != 1 ? 's' : ''} — the fewest needed to settle up.',
               style: const TextStyle(
                   fontSize: 12, color: AppTheme.textSecondary),
             ),
@@ -473,41 +469,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
     );
   }
 
-  void _showInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Settlement Algorithm'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Expensio minimizes transactions using a two-phase approach:',
-                style: TextStyle(
-                    fontSize: 13, color: AppTheme.textSecondary),
-              ),
-              SizedBox(height: 12),
-              _InfoStep(n: '1', title: 'Net Balances',
-                  desc: 'Calculate total owed/owing per person.'),
-              _InfoStep(n: '2', title: 'Greedy (O n log n)',
-                  desc: 'Match largest debtor with largest creditor repeatedly.'),
-              _InfoStep(n: '3', title: 'Optimal (≤8 members)',
-                  desc: 'Backtracking finds the absolute minimum transactions.'),
-              _InfoStep(n: '4', title: 'Best wins',
-                  desc: 'Returns whichever approach gives fewer payments.'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Got it')),
-        ],
-      ),
-    );
-  }
 }
 
 class _BannerStat extends StatelessWidget {
@@ -746,50 +707,3 @@ class _PendingCard extends StatelessWidget {
   }
 }
 
-class _InfoStep extends StatelessWidget {
-  final String n;
-  final String title;
-  final String desc;
-  const _InfoStep(
-      {required this.n, required this.title, required this.desc});
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 20, height: 20,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceMid,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(n,
-                style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: AppTheme.textPrimary)),
-                Text(desc,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textSecondary)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

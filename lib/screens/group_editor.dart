@@ -50,7 +50,7 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
     final g = widget.existing;
     _nameCtrl = TextEditingController(text: g?.name ?? '');
     _descCtrl = TextEditingController(text: g?.description ?? '');
-    // "You" is an implicit member — never shown as an editable row.
+    // "You" is an implicit member, never shown as an editable row.
     final existingMembers = _isEdit
         ? g!.memberIds
             .where((id) => id != Services.currentUserId)
@@ -106,7 +106,7 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
     for (final m in _members) {
       final n = m.ctrl.text.trim();
       if (n.isEmpty) continue;
-      final u = UserModel(id: _uuid.v4(), name: n);
+      final u = UserModel(id: _uuid.v4(), name: n, isPlaceholder: true);
       await Services.state.saveUser(u);
       ids.add(u.id);
     }
@@ -133,19 +133,39 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
           ids.add(m.existingId!);
         }
       } else {
-        final u = UserModel(id: _uuid.v4(), name: n);
+        final u = UserModel(id: _uuid.v4(), name: n, isPlaceholder: true);
         await Services.state.saveUser(u);
         ids.add(u.id);
       }
     }
-    // Delete the placeholder members the user removed.
-    for (final id in group.memberIds.where((id) => !ids.contains(id))) {
-      await Services.state.deleteUser(id);
+    // Remove the members the user dropped. Anyone still referenced by an
+    // existing expense is KEPT (and their profile preserved) so their share
+    // and name never become an orphaned id in Settle Up; only truly-unused
+    // placeholders are deleted.
+    final groupExpenses = Services.state.getExpensesByGroup(group.id);
+    bool hasHistory(String userId) => groupExpenses.any((e) =>
+        e.payerId == userId ||
+        e.participantIds.contains(userId) ||
+        e.splitMap.containsKey(userId));
+
+    final blocked = <String>[];
+    for (final id in group.memberIds.where((id) => !ids.contains(id)).toList()) {
+      if (hasHistory(id)) {
+        ids.add(id); // keep them in the group
+        blocked.add(Services.state.getUserById(id)?.name ?? 'a member');
+      } else {
+        await Services.state.deleteUser(id);
+      }
     }
     group.name = _nameCtrl.text.trim();
     group.description = _descCtrl.text.trim();
     group.memberIds = ids;
     await Services.state.saveGroup(group);
+
+    if (blocked.isNotEmpty && mounted) {
+      _snack(
+          'Kept ${blocked.join(', ')} — they\'re part of existing expenses.');
+    }
   }
 
   @override

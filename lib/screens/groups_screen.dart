@@ -163,11 +163,15 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   .map(Services.state.getUserById)
                   .whereType<UserModel>()
                   .toList();
+              final myBalance =
+                  Services.state.computeBalances(g.id)[Services.currentUserId] ??
+                      0;
               return _GroupCard(
                 group: g,
                 members: members,
                 expenseCount: expenses.length,
                 totalAmount: total,
+                myBalance: myBalance,
                 onTap: () => Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => GroupDetailScreen(group: g))),
@@ -224,6 +228,7 @@ class _GroupCard extends StatelessWidget {
   final List<UserModel> members;
   final int expenseCount;
   final int totalAmount;
+  final int myBalance;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -234,6 +239,7 @@ class _GroupCard extends StatelessWidget {
     required this.members,
     required this.expenseCount,
     required this.totalAmount,
+    required this.myBalance,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -372,12 +378,42 @@ class _GroupCard extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondary)),
+                    const Spacer(),
+                    _buildBalanceChip(),
                   ],
                 ),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Your own position in the group: owed (green), owing (red) or settled.
+  Widget _buildBalanceChip() {
+    final settled = myBalance == 0;
+    final owed = myBalance > 0;
+    final color = settled
+        ? AppTheme.textSecondary
+        : owed
+            ? AppTheme.successColor
+            : AppTheme.errorColor;
+    final label = settled
+        ? 'You\'re settled'
+        : owed
+            ? 'You\'re owed ${Money.withSymbol(myBalance.abs(), decimals: 0)}'
+            : 'You owe ${Money.withSymbol(myBalance.abs(), decimals: 0)}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
