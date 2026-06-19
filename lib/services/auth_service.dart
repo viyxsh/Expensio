@@ -35,13 +35,13 @@ class AuthException implements Exception {
 abstract class AuthService {
   AppUser? get currentUser;
 
-  /// Emits on sign-in / sign-out / guest→account linking / profile changes.
+  /// Emits on sign-in / sign-out / guest-to-account linking / profile changes.
   Stream<AppUser?> authStateChanges();
 
   /// Sign in anonymously (guest). Returns the resulting user.
   Future<AppUser> signInAsGuest();
 
-  /// Create an account from the current guest by linking an email credential —
+  /// Create an account from the current guest by linking an email credential,
   /// keeps the same uid so existing data stays. Throws [AuthException].
   Future<AppUser> registerWithEmail(String email, String password);
 

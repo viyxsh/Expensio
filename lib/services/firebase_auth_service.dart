@@ -96,8 +96,8 @@ class FirebaseAuthService implements AuthService {
       final res = await _auth.signInWithCredential(cred);
       return _map(res.user)!;
     } on FirebaseAuthException catch (e) {
-      // The credential is already attached to a real account — sign into it.
-      // (Any guest data on THIS device won't be merged yet — see Phase 2b.)
+      // The credential is already attached to a real account, sign into it.
+      // (Any guest data on THIS device won't be merged yet, see Phase 2b.)
       if (e.code == 'credential-already-in-use' ||
           e.code == 'email-already-in-use') {
         final res = await _auth.signInWithCredential(

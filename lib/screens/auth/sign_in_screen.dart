@@ -34,7 +34,7 @@ class _SignInScreenState extends State<SignInScreen> {
       await action();
       if (mounted) Navigator.of(context).pop();
     } on AuthException catch (e) {
-      if (e.code == 'cancelled') return; // user backed out — say nothing
+      if (e.code == 'cancelled') return; // user backed out, say nothing
       if (mounted) _snack(e.message);
     } catch (e) {
       if (mounted) _snack('Something went wrong. Please try again.');

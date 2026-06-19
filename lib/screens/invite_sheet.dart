@@ -12,7 +12,7 @@ String inviteLinkFor(String code) => 'expensio://join/$code';
 
 /// Create (or refresh) a shareable invite code for [group] and present it.
 /// Reusable from the Groups list, a group's detail, and the group editor.
-/// Requires cloud mode — invites live on the server so a second device can join.
+/// Requires cloud mode. Invites live on the server so a second device can join.
 Future<void> showInviteSheet(BuildContext context, GroupModel group) async {
   final messenger = ScaffoldMessenger.of(context);
   void snack(String m) =>

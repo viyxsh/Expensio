@@ -17,7 +17,7 @@ class Money {
   /// Convert a major-unit double (e.g. an OCR-derived total) into cents.
   static int fromMajor(double major) => (major * 100).round();
 
-  /// Convert cents back to a major-unit double — only for charts/compact labels.
+  /// Convert cents back to a major-unit double, only for charts/compact labels.
   static double toMajor(int cents) => cents / 100.0;
 
   /// Plain numeric string without a currency symbol, e.g. "1234.50".

@@ -10,7 +10,7 @@ class _JoinChoice {
   const _JoinChoice(this.claimId);
 }
 
-/// Extract an invite code from a raw value — accepts a bare code or an
+/// Extract an invite code from a raw value, accepts a bare code or an
 /// `expensio://join/<code>` link (from a QR or deep link). Null if unusable.
 String? parseInviteCode(String raw) {
   final s = raw.trim();

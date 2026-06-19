@@ -36,7 +36,7 @@ class ExpenseModel extends HiveObject {
   @HiveField(9)
   bool isPersonal;
 
-  // Split map: userId -> amount they owe, in minor units (cents/paise)
+  // Split map: userId to amount they owe, in minor units (cents/paise)
   @HiveField(10)
   Map<String, int> splitMap;
 

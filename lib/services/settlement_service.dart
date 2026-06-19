@@ -37,7 +37,7 @@ class SettlementService {
   /// Step 3: For small groups, run capped optimal backtracking to minimize count.
   static List<Settlement> computeSettlements(
     Map<String, int> balances,
-    Map<String, String> userNames, // userId -> name
+    Map<String, String> userNames, // userId to name
   ) {
     // Remove zero balances.
     final cleanBalances = Map<String, int>.fromEntries(

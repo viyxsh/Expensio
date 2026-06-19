@@ -312,7 +312,7 @@ class AppTheme {
   }
 }
 
-// Shared UI components — all dark-aware
+// Shared UI components, all dark-aware
 
 class SectionHeader extends StatelessWidget {
   final String title;

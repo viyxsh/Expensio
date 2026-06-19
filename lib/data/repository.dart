@@ -87,7 +87,7 @@ abstract class ExpensioRepository {
   /// Join the group referenced by [code]: add the current user to it and
   /// backfill their access to existing expenses/settlements. When
   /// [claimPlaceholderId] is given, the current user takes over that
-  /// placeholder member — inheriting its expenses/balances — and the
+  /// placeholder member, inheriting its expenses/balances, and the
   /// placeholder is removed. Throws on an invalid or expired code.
   Future<void> joinGroup(String code, {String? claimPlaceholderId});
 }
