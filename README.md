@@ -2,7 +2,7 @@
 
 A Flutter app for tracking personal expenses and splitting group bills. Scan receipts with your camera, let AI parse the items, and settle up with the fewest possible transfers — on mobile or the web.
 
-**🔗 Live demo:** _add your link here_
+**🔗 Live demo:** <https://viyxsh.github.io/Expensio/>
 
 ---
 
