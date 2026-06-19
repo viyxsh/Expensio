@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:hive_flutter/hive_flutter.dart';
 
 class AppSettings {
@@ -7,6 +9,8 @@ class AppSettings {
   static const _dailyReminderKey = 'notif_daily';
   static const _chartsExpandedKey = 'tx_charts_expanded';
   static const _themeModeKey = 'theme_mode';
+  static const _budgetOverallKey = 'budget_overall'; // cents, 0 = unset
+  static const _budgetCategoriesKey = 'budget_categories'; // JSON {cat: cents}
 
   static Box get _box => Hive.box(_boxName);
 
@@ -69,4 +73,32 @@ class AppSettings {
 
   static Future<void> setThemeMode(String mode) =>
       _box.put(_themeModeKey, mode);
+
+  // Budgets (all amounts in cents). 0 / absent means "no budget set".
+
+  static int get overallBudget =>
+      _box.get(_budgetOverallKey, defaultValue: 0) as int;
+
+  static Future<void> setOverallBudget(int cents) =>
+      _box.put(_budgetOverallKey, cents < 0 ? 0 : cents);
+
+  static Map<String, int> get categoryBudgets {
+    final raw = _box.get(_budgetCategoriesKey);
+    if (raw is String && raw.isNotEmpty) {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      return m.map((k, v) => MapEntry(k, (v as num).toInt()));
+    }
+    return {};
+  }
+
+  /// Set (or clear, when [cents] <= 0) the budget for a single category.
+  static Future<void> setCategoryBudget(String category, int cents) {
+    final m = categoryBudgets;
+    if (cents <= 0) {
+      m.remove(category);
+    } else {
+      m[category] = cents;
+    }
+    return _box.put(_budgetCategoriesKey, jsonEncode(m));
+  }
 }

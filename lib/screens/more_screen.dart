@@ -16,6 +16,7 @@ import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
 import 'auth/sign_in_screen.dart';
+import 'budget_screen.dart';
 
 class MoreScreen extends StatefulWidget {
   /// Switches the bottom-nav tab (0 = Transactions, 1 = Groups), so the
@@ -554,6 +555,18 @@ class _MoreScreenState extends State<MoreScreen> {
                   const SectionHeader(title: 'Settings'),
                   const SizedBox(height: 8),
                   _Section(children: [
+                    _SettingsTile(
+                      icon: Icons.savings_outlined,
+                      title: 'Budget',
+                      subtitle: AppSettings.overallBudget > 0
+                          ? '$sym ${_compact(Money.toMajor(AppSettings.overallBudget))} / month'
+                          : 'Set a monthly spending cap',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const BudgetScreen()),
+                      ),
+                    ),
                     _SettingsTile(
                       icon: AppTheme.isDark
                           ? Icons.dark_mode_outlined
