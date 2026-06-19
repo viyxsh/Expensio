@@ -17,7 +17,10 @@ import '../utils/money.dart';
 import 'auth/sign_in_screen.dart';
 
 class MoreScreen extends StatefulWidget {
-  const MoreScreen({super.key});
+  /// Switches the bottom-nav tab (0 = Transactions, 1 = Groups), so the
+  /// Overview stat cards can jump to their corresponding lists.
+  final void Function(int index)? onSelectTab;
+  const MoreScreen({super.key, this.onSelectTab});
 
   @override
   State<MoreScreen> createState() => _MoreScreenState();
@@ -430,14 +433,14 @@ class _MoreScreenState extends State<MoreScreen> {
                                         size: 13,
                                         color: AppTheme.textSecondary),
                                     SizedBox(width: 3),
-                                    Flexible(
+                                    Expanded(
                                       child: Text('This Month',
                                           style: TextStyle(
                                               fontSize: 11,
                                               color: AppTheme.textSecondary),
                                           overflow: TextOverflow.ellipsis),
                                     ),
-                                    Spacer(),
+                                    SizedBox(width: 3),
                                     Icon(Icons.chevron_right,
                                         size: 14,
                                         color: AppTheme.textSecondary),
@@ -462,17 +465,25 @@ class _MoreScreenState extends State<MoreScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: InfoCard(
-                            label: 'Groups',
-                            value: '${allGroups.length}',
-                            icon: Icons.group_outlined),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => widget.onSelectTab?.call(1),
+                          child: InfoCard(
+                              label: 'Groups',
+                              value: '${allGroups.length}',
+                              icon: Icons.group_outlined),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: InfoCard(
-                            label: 'Expenses',
-                            value: '${allExpenses.length}',
-                            icon: Icons.receipt_outlined),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => widget.onSelectTab?.call(0),
+                          child: InfoCard(
+                              label: 'Expenses',
+                              value: '${allExpenses.length}',
+                              icon: Icons.receipt_outlined),
+                        ),
                       ),
                     ],
                   ),
@@ -485,21 +496,20 @@ class _MoreScreenState extends State<MoreScreen> {
                     _SettingsTile(
                       icon: Icons.currency_exchange,
                       title: 'Currency',
-                      subtitle:
-                          '$sym  $currencyName',
+                      subtitle: '$sym · $currencyName',
                       onTap: _showCurrencyPicker,
                     ),
                     _NotifTile(
                       icon: Icons.handshake_outlined,
                       title: 'Settlement Reminders',
-                      subtitle: 'Daily reminder at 8 PM',
+                      subtitle: settlementOn ? 'Daily reminder at 8 PM' : 'Off',
                       value: settlementOn,
                       onChanged: _toggleSettlement,
                     ),
                     _NotifTile(
                       icon: Icons.edit_note_outlined,
                       title: 'Daily Log Reminder',
-                      subtitle: 'Daily reminder at 9 PM',
+                      subtitle: dailyOn ? 'Daily reminder at 9 PM' : 'Off',
                       value: dailyOn,
                       onChanged: _toggleDaily,
                     ),
@@ -571,7 +581,7 @@ class _Section extends StatelessWidget {
   }
 }
 
-// Account card — guest vs signed-in, driven by the auth stream
+// Account card: guest vs signed-in, driven by the auth stream
 
 class _AccountCard extends StatelessWidget {
   final VoidCallback onSignIn;

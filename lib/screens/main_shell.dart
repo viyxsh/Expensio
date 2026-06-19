@@ -14,18 +14,19 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    TransactionsScreen(),
-    GroupsScreen(),
-    MoreScreen(),
-  ];
+  void _selectTab(int i) => setState(() => _currentIndex = i);
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      const TransactionsScreen(),
+      const GroupsScreen(),
+      MoreScreen(onSelectTab: _selectTab),
+    ];
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
