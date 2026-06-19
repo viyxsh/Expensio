@@ -13,7 +13,11 @@ enum _SplitType { percentage, fixed }
 class _ParticipantSplit {
   _SplitType type;
   TextEditingController ctrl;
-  _ParticipantSplit({required this.type, required this.ctrl});
+  /// True once the user has manually typed a value for this person. Locked
+  /// people keep their value; everyone else auto-splits the remainder.
+  bool locked;
+  _ParticipantSplit(
+      {required this.type, required this.ctrl, this.locked = false});
 }
 
 class AddExpenseScreen extends StatefulWidget {
@@ -77,17 +81,60 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  /// Selected participants in member order (stable for exact remainder splits).
+  List<String> get _selectedOrdered => widget.members
+      .map((m) => m.id)
+      .where(_selectedParticipants.contains)
+      .toList();
+
+  /// The cents a locked participant has claimed, resolving a percentage entry
+  /// against the current total.
+  int _lockedAmount(String id, int total) {
+    final sd = _splitData[id]!;
+    if (sd.type == _SplitType.fixed) {
+      return Money.tryParseToCents(sd.ctrl.text) ?? 0;
+    }
+    final pct = double.tryParse(sd.ctrl.text) ?? 0;
+    return ((total * pct) / 100).round();
+  }
+
+  /// Clear all locks and rebalance — everyone shares the total evenly.
   void _resetEqualSplit() {
-    if (_selectedParticipants.isEmpty) return;
-    final pct = 100 / _selectedParticipants.length;
-    for (final id in widget.members.map((m) => m.id)) {
+    for (final m in widget.members) {
+      final sd = _splitData[m.id]!;
+      sd.locked = false;
+      if (!_selectedParticipants.contains(m.id)) sd.ctrl.text = '0';
+    }
+    _syncUnlocked();
+  }
+
+  /// Spread whatever isn't locked equally across the unlocked participants and
+  /// rewrite their input fields, so adjusting one person auto-adjusts the rest.
+  /// [skipId] is left untouched (it's the field currently being edited).
+  void _syncUnlocked({String? skipId}) {
+    final total = _totalCents;
+    final selected = _selectedOrdered;
+    if (selected.isEmpty) return;
+
+    var lockedSum = 0;
+    for (final id in selected) {
+      if (_splitData[id]!.locked) lockedSum += _lockedAmount(id, total);
+    }
+    final unlocked = selected.where((id) => !_splitData[id]!.locked).toList();
+    if (unlocked.isEmpty) return;
+
+    final remaining = total - lockedSum;
+    final shares =
+        Money.splitEqual(remaining < 0 ? 0 : remaining, unlocked.length);
+    for (var i = 0; i < unlocked.length; i++) {
+      final id = unlocked[i];
+      if (id == skipId) continue;
       final sd = _splitData[id]!;
-      if (_selectedParticipants.contains(id)) {
-        sd.type = _SplitType.percentage;
-        sd.ctrl.text = pct.toStringAsFixed(1);
-      } else {
-        sd.ctrl.text = '0';
-      }
+      final text = sd.type == _SplitType.fixed
+          ? Money.toMajor(shares[i]).toStringAsFixed(2)
+          : (total > 0 ? shares[i] / total * 100 : 100 / selected.length)
+              .toStringAsFixed(1);
+      if (sd.ctrl.text != text) sd.ctrl.text = text;
     }
   }
 
@@ -113,40 +160,36 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   /// Total amount in cents.
   int get _totalCents => Money.tryParseToCents(_amountCtrl.text) ?? 0;
 
-  /// Resolved split as cents per participant. For equal splits the remainder is
-  /// distributed exactly; for custom splits values may drift by a few cents and
-  /// are snapped to the total in [_save].
+  /// Resolved split as cents per participant: locked people get the amount they
+  /// entered (a percentage resolves against the total); everyone else splits
+  /// the remainder evenly, distributing leftover cents exactly.
   Map<String, int> _resolvedSplitMap() {
     final total = _totalCents;
-    final participants = _selectedParticipants.toList();
-    if (participants.isEmpty) return {};
+    final selected = _selectedOrdered;
+    if (selected.isEmpty) return {};
 
     if (_splitEqually) {
-      final shares = Money.splitEqual(total, participants.length);
+      final shares = Money.splitEqual(total, selected.length);
       return {
-        for (int i = 0; i < participants.length; i++) participants[i]: shares[i]
+        for (int i = 0; i < selected.length; i++) selected[i]: shares[i]
       };
     }
 
-    int fixedTotal = 0;
-    final Map<String, int> result = {};
-
-    for (final id in participants) {
-      final sd = _splitData[id]!;
-      if (sd.type == _SplitType.fixed) {
-        final c = Money.tryParseToCents(sd.ctrl.text) ?? 0;
-        result[id] = c;
-        fixedTotal += c;
+    final result = <String, int>{};
+    var lockedSum = 0;
+    for (final id in selected) {
+      if (_splitData[id]!.locked) {
+        final v = _lockedAmount(id, total);
+        result[id] = v;
+        lockedSum += v;
       }
     }
-
-    final remainder = total - fixedTotal;
-    for (final id in participants) {
-      final sd = _splitData[id]!;
-      if (sd.type == _SplitType.percentage) {
-        final pct = double.tryParse(sd.ctrl.text) ?? 0;
-        result[id] = (remainder * pct / 100).round();
-      }
+    final unlocked = selected.where((id) => !_splitData[id]!.locked).toList();
+    final remaining = total - lockedSum;
+    final shares =
+        Money.splitEqual(remaining < 0 ? 0 : remaining, unlocked.length);
+    for (var i = 0; i < unlocked.length; i++) {
+      result[unlocked[i]] = shares[i];
     }
     return result;
   }
@@ -254,7 +297,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 prefixText: 'Rs ',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() {
+                if (!_splitEqually) _syncUnlocked();
+              }),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Required';
                 if (double.tryParse(v) == null || double.parse(v) <= 0) {
@@ -313,7 +358,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     onPressed: () => setState(() {
                       _selectedParticipants
                           .addAll(widget.members.map((m) => m.id));
-                      if (_splitEqually) _resetEqualSplit();
+                      if (_splitEqually) {
+                        _resetEqualSplit();
+                      } else {
+                        _syncUnlocked();
+                      }
                     }),
                     child: const Text('All'),
                   ),
@@ -422,7 +471,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             } else {
               _selectedParticipants.remove(m.id);
             }
-            if (_splitEqually) _resetEqualSplit();
+            if (_splitEqually) {
+              _resetEqualSplit();
+            } else {
+              _syncUnlocked();
+            }
           }),
         );
       }).toList(),
@@ -448,7 +501,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         value: _splitEqually,
         onChanged: (v) => setState(() {
           _splitEqually = v;
-          if (v) _resetEqualSplit();
+          // Start either mode balanced; in custom mode the user then locks
+          // individuals and the rest auto-adjust.
+          _resetEqualSplit();
         }),
       ),
     );
@@ -566,7 +621,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             sd.type = isPct
                                 ? _SplitType.fixed
                                 : _SplitType.percentage;
+                            // Switching unit unlocks the person; their field
+                            // refills with the auto share in the new unit.
+                            sd.locked = false;
                             sd.ctrl.clear();
+                            _syncUnlocked();
                           }),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
@@ -633,7 +692,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               filled: true,
                               fillColor: AppTheme.surfaceMid,
                             ),
-                            onChanged: (_) => setState(() {}),
+                            onChanged: (txt) => setState(() {
+                              // Typing locks this person; clearing frees them
+                              // back into the auto-split.
+                              sd.locked = txt.trim().isNotEmpty;
+                              _syncUnlocked(skipId: m.id);
+                            }),
                           ),
                         ),
                       ],
@@ -647,13 +711,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         const SizedBox(height: 8),
         TextButton.icon(
           onPressed: () => setState(() {
-            final n = participants.length;
-            if (n == 0) return;
-            final each = 100 / n;
             for (final m in participants) {
-              _splitData[m.id]!.type = _SplitType.percentage;
-              _splitData[m.id]!.ctrl.text = each.toStringAsFixed(1);
+              _splitData[m.id]!.locked = false;
             }
+            _syncUnlocked();
           }),
           icon: const Icon(Icons.auto_fix_high_outlined, size: 16),
           label: const Text('Auto-balance equally'),
