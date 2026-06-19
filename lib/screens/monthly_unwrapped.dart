@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../data/balances.dart';
 import '../models/expense_model.dart';
 import '../services/app_settings.dart';
+import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
 
@@ -15,6 +17,7 @@ class MonthlyWrapped {
   final int count;
   final List<MapEntry<String, int>> categories; // sorted by spend, descending
   final ExpenseModel? biggest;
+  final int biggestCents; // the user's amount for [biggest]
 
   const MonthlyWrapped({
     required this.month,
@@ -22,6 +25,7 @@ class MonthlyWrapped {
     required this.count,
     required this.categories,
     required this.biggest,
+    this.biggestCents = 0,
   });
 
   bool get isEmpty => count == 0;
@@ -31,22 +35,31 @@ class MonthlyWrapped {
   double get topCategoryPct =>
       totalCents == 0 ? 0 : topCategoryCents / totalCents * 100;
 
-  /// Build the recap for the calendar month containing [month].
-  static MonthlyWrapped forMonth(List<ExpenseModel> all, DateTime month) {
+  /// Build the recap for the calendar month containing [month], from [uid]'s
+  /// point of view (amounts are the user's share, or the full total on expenses
+  /// they paid).
+  static MonthlyWrapped forMonth(
+      List<ExpenseModel> all, DateTime month, String uid) {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1);
-    final inMonth = all
-        .where((e) =>
-            !e.createdAt.isBefore(start) && e.createdAt.isBefore(end))
-        .toList();
+    final inMonth = all.where((e) =>
+        !e.createdAt.isBefore(start) && e.createdAt.isBefore(end));
 
     final catTotals = <String, int>{};
     var total = 0;
+    var count = 0;
     ExpenseModel? biggest;
+    var biggestCents = 0;
     for (final e in inMonth) {
-      catTotals[e.category] = (catTotals[e.category] ?? 0) + e.totalAmount;
-      total += e.totalAmount;
-      if (biggest == null || e.totalAmount > biggest.totalAmount) biggest = e;
+      final amt = userAmountOf(e, uid);
+      if (amt <= 0) continue; // not the user's spending
+      catTotals[e.category] = (catTotals[e.category] ?? 0) + amt;
+      total += amt;
+      count++;
+      if (amt > biggestCents) {
+        biggestCents = amt;
+        biggest = e;
+      }
     }
     final cats = catTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -54,9 +67,10 @@ class MonthlyWrapped {
     return MonthlyWrapped(
       month: start,
       totalCents: total,
-      count: inMonth.length,
+      count: count,
       categories: cats,
       biggest: biggest,
+      biggestCents: biggestCents,
     );
   }
 }
@@ -110,7 +124,8 @@ class MonthlyUnwrappedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = MonthlyWrapped.forMonth(expenses, DateTime.now());
+    final w = MonthlyWrapped.forMonth(
+        expenses, DateTime.now(), Services.currentUserId);
     if (w.isEmpty) return const SizedBox.shrink();
 
     final accent = AppTheme.categoryColor(w.topCategory);
@@ -596,7 +611,7 @@ class _MonthlyUnwrappedScreenState extends State<MonthlyUnwrappedScreen> {
             delay: const Duration(milliseconds: 220),
             child: _CountUp(
               active: active,
-              cents: e.totalAmount,
+              cents: w.biggestCents,
               prefix: '$sym ',
               style: const TextStyle(
                   fontSize: 30,

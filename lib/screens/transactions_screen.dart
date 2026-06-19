@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../data/balances.dart';
 import '../models/expense_model.dart';
 import '../services/app_settings.dart';
 import '../services/services.dart';
@@ -31,6 +32,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         listenable: Services.state,
         builder: (context, _) {
           final all = Services.state.getAllExpenses();
+
+          // Current user's net balance per group, to approximate whether an
+          // owed share is settled. Computed once and shared across tiles.
+          final uid = Services.currentUserId;
+          final myGroupNet = <String, int>{};
+          for (final gid in all
+              .where((e) => !e.isPersonal && e.groupId.isNotEmpty)
+              .map((e) => e.groupId)
+              .toSet()) {
+            myGroupNet[gid] = Services.state.computeBalances(gid)[uid] ?? 0;
+          }
 
           final filtered = _filterCategory == 'All'
               ? all
@@ -107,7 +119,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         cursor++;
                         for (int j = 0; j < sec.items.length; j++) {
                           if (i == cursor) {
-                            return _TransactionTile(expense: sec.items[j]);
+                            final e = sec.items[j];
+                            return _TransactionTile(
+                              expense: e,
+                              groupNetForMe: myGroupNet[e.groupId] ?? 0,
+                            );
                           }
                           cursor++;
                         }
@@ -223,9 +239,10 @@ class _ChartsSectionState extends State<_ChartsSection> {
   /// units (for the axis); each bar carries its short axis label.
   List<_Bar> _buildBars(List<ExpenseModel> expenses) {
     final now = DateTime.now();
+    final uid = Services.currentUserId;
     int cents(int i, bool Function(DateTime) inBucket) => expenses
         .where((e) => inBucket(e.createdAt))
-        .fold<int>(0, (s, e) => s + e.totalAmount);
+        .fold<int>(0, (s, e) => s + userAmountOf(e, uid));
 
     switch (_period) {
       case _StatsPeriod.week:
@@ -268,17 +285,20 @@ class _ChartsSectionState extends State<_ChartsSection> {
     if (widget.expenses.isEmpty) return const SizedBox.shrink();
 
     final periodExpenses = _withinPeriod(widget.expenses);
+    final uid = Services.currentUserId;
 
-    // Category breakdown for pie chart (totals in cents)
+    // Category breakdown for pie chart, using each expense's amount from the
+    // current user's point of view (their share, or the full total if they paid).
     final catTotals = <String, int>{};
     for (final e in periodExpenses) {
-      catTotals[e.category] =
-          (catTotals[e.category] ?? 0) + e.totalAmount;
+      final amt = userAmountOf(e, uid);
+      if (amt == 0) continue;
+      catTotals[e.category] = (catTotals[e.category] ?? 0) + amt;
     }
     final sorted = catTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final total =
-    periodExpenses.fold<int>(0, (s, e) => s + e.totalAmount);
+        periodExpenses.fold<int>(0, (s, e) => s + userAmountOf(e, uid));
 
     // Bar chart bucketed at the period's natural granularity.
     final barData = _buildBars(periodExpenses);
@@ -852,17 +872,22 @@ class _DateHeader extends StatelessWidget {
 // Transaction tile 
 class _TransactionTile extends StatelessWidget {
   final ExpenseModel expense;
-  const _TransactionTile({required this.expense});
+  /// The current user's net balance (cents) in this expense's group; >= 0 means
+  /// they're square, used to approximate whether an owed share is settled.
+  final int groupNetForMe;
+  const _TransactionTile({required this.expense, this.groupNetForMe = 0});
 
   @override
   Widget build(BuildContext context) {
+    final uid = Services.currentUserId;
     final payer = Services.state.getUserById(expense.payerId);
     final group = Services.state.getGroupById(expense.groupId);
     final payerName = payer?.name ?? 'Unknown';
     final groupName = group?.name ?? '';
 
-    final participantCount = expense.participantIds.length;
-    final isGroup = !expense.isPersonal && participantCount > 1;
+    final iPaid = !expense.isPersonal && expense.payerId == uid;
+    // Amount shown: full total when you fronted it, otherwise your share.
+    final amount = userAmountOf(expense, uid);
 
     return Dismissible(
       key: Key(expense.id),
@@ -951,7 +976,7 @@ class _TransactionTile extends StatelessWidget {
                   child: Text(
                     expense.isPersonal
                         ? 'Personal'
-                        : 'Paid by $payerName'
+                        : '${iPaid ? 'You paid' : 'Paid by $payerName'}'
                             '${groupName.isNotEmpty ? '  •  $groupName' : ''}',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -968,21 +993,60 @@ class _TransactionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                Money.withSymbol(expense.totalAmount, decimals: 0),
+                Money.withSymbol(amount, decimals: 0),
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary),
               ),
-              if (isGroup)
-                Text('total',
-                    style: TextStyle(
-                        fontSize: 10, color: AppTheme.textSecondary)),
+              _involvementCaption(),
             ],
           ),
           isThreeLine: false,
         ),
       ),
+    );
+  }
+
+  /// Small caption under the amount describing the user's involvement:
+  /// what they lent (if they paid), or whether their owed share is settled.
+  Widget _involvementCaption() {
+    if (expense.isPersonal) return const SizedBox.shrink();
+    final uid = Services.currentUserId;
+    final captionStyle =
+        TextStyle(fontSize: 10, color: AppTheme.textSecondary);
+
+    if (expense.payerId == uid) {
+      final lent = expense.totalAmount - userShareOf(expense, uid);
+      return Text(
+        lent > 0 ? 'you lent ${Money.withSymbol(lent, decimals: 0)}' : 'you paid',
+        style: captionStyle,
+      );
+    }
+
+    // Someone else paid: the shown amount is your owed share. "Settled" is
+    // approximated from your overall balance in the group (>= 0 means square).
+    if (userShareOf(expense, uid) == 0) return const SizedBox.shrink();
+    final settled = groupNetForMe >= 0;
+    const amber = Color(0xFFE0A52F);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (settled)
+          const Padding(
+            padding: EdgeInsets.only(right: 2),
+            child: Icon(Icons.check_circle,
+                size: 10, color: AppTheme.successColor),
+          ),
+        Text(
+          settled ? 'settled' : 'you owe',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: settled ? AppTheme.successColor : amber,
+          ),
+        ),
+      ],
     );
   }
 

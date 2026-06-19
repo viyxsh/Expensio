@@ -50,3 +50,22 @@ Map<String, int> computeBalancesFrom(
 
   return balances;
 }
+
+/// The portion of [e] that [uid] owes (their consumption), in cents. Uses the
+/// explicit split map when present, otherwise an exact equal split. Returns 0
+/// when the user isn't a participant.
+int userShareOf(ExpenseModel e, String uid) {
+  if (e.splitMap.isNotEmpty) return e.splitMap[uid] ?? 0;
+  final idx = e.participantIds.indexOf(uid);
+  if (idx < 0) return 0;
+  return Money.splitEqual(e.totalAmount, e.participantIds.length)[idx];
+}
+
+/// The amount of [e] attributable to [uid] from their own ledger's point of
+/// view, in cents: the full total when they fronted it (personal, or they're
+/// the group payer), otherwise just their share. This is what the Transactions
+/// page and its stats show, so tile amounts and totals stay consistent.
+int userAmountOf(ExpenseModel e, String uid) {
+  if (e.isPersonal || e.payerId == uid) return e.totalAmount;
+  return userShareOf(e, uid);
+}

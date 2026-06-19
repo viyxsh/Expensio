@@ -109,6 +109,39 @@ void main() {
       _expectZeroSum(b);
     });
 
+  });
+
+  group('userShareOf / userAmountOf', () {
+    test('share is the equal split for a participant, 0 otherwise', () {
+      final e = _expense(payerId: 'A', participants: ['A', 'B', 'C'], total: 900);
+      expect(userShareOf(e, 'B'), 300);
+      expect(userShareOf(e, 'Z'), 0); // not a participant
+    });
+
+    test('share respects an explicit split map', () {
+      final e = _expense(
+        payerId: 'A',
+        participants: ['A', 'B', 'C'],
+        total: 1000,
+        splitMap: {'A': 200, 'B': 300, 'C': 500},
+      );
+      expect(userShareOf(e, 'C'), 500);
+    });
+
+    test('amount is the full total when you paid, your share otherwise', () {
+      final e = _expense(payerId: 'A', participants: ['A', 'B', 'C'], total: 900);
+      expect(userAmountOf(e, 'A'), 900); // payer fronted the whole bill
+      expect(userAmountOf(e, 'B'), 300); // someone else paid -> your share
+    });
+
+    test('personal expense counts in full', () {
+      final e = _expense(
+          payerId: 'A', participants: ['A'], total: 500, isPersonal: true);
+      expect(userAmountOf(e, 'A'), 500);
+    });
+  });
+
+  group('balance accumulation', () {
     test('multiple expenses accumulate', () {
       final b = computeBalancesFrom(
         [

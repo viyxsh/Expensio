@@ -20,7 +20,7 @@ void main() {
 
     test('is empty when nothing falls in the month', () {
       final w = MonthlyWrapped.forMonth(
-          [_e('Food & Drink', 500, DateTime(2026, 5, 30))], june);
+          [_e('Food & Drink', 500, DateTime(2026, 5, 30))], june, 'A');
       expect(w.isEmpty, isTrue);
       expect(w.count, 0);
     });
@@ -31,7 +31,7 @@ void main() {
         _e('Food & Drink', 300, DateTime(2026, 6, 10)),
         _e('Transport', 100, DateTime(2026, 6, 12)),
         _e('Entertainment', 200, DateTime(2026, 5, 1)), // previous month
-      ], june);
+      ], june, 'A');
 
       expect(w.count, 3);
       expect(w.totalCents, 1000);
@@ -42,7 +42,7 @@ void main() {
 
     test('excludes the very first day of the next month', () {
       final w = MonthlyWrapped.forMonth(
-          [_e('Health', 500, DateTime(2026, 7, 1))], june);
+          [_e('Health', 500, DateTime(2026, 7, 1))], june, 'A');
       expect(w.isEmpty, isTrue);
     });
 
@@ -51,7 +51,7 @@ void main() {
         _e('Food & Drink', 300, DateTime(2026, 6, 2)),
         _e('Electronics', 5000, DateTime(2026, 6, 4), title: 'Headphones'),
         _e('Transport', 100, DateTime(2026, 6, 6)),
-      ], june);
+      ], june, 'A');
       expect(w.biggest?.title, 'Headphones');
       expect(w.biggest?.totalAmount, 5000);
     });
