@@ -1,5 +1,5 @@
 // NOTE: imports resolve only after `flutter pub get` with the Firebase deps.
-// This is Phase-1 scaffolding — verify against the Firestore emulator before
+// This is Phase-1 scaffolding. Verify against the Firestore emulator before
 // relying on it (see SETUP.md). Some multi-user details (personal-expense
 // ownership, contact invites) are finalised in Phase 2.
 import 'dart:math';
@@ -35,8 +35,11 @@ class FirestoreRepository implements ExpensioRepository {
 
   // Serialization
 
-  UserModel _userFromData(String id, Map<String, dynamic>? d) =>
-      UserModel(id: id, name: d?['name'] as String? ?? '');
+  UserModel _userFromData(String id, Map<String, dynamic>? d) => UserModel(
+        id: id,
+        name: d?['name'] as String? ?? '',
+        isPlaceholder: d?['isPlaceholder'] as bool? ?? false,
+      );
 
   Map<String, dynamic> _groupToMap(GroupModel g) => {
         'name': g.name,
@@ -211,8 +214,9 @@ class FirestoreRepository implements ExpensioRepository {
   // Writes
 
   @override
-  Future<void> saveUser(UserModel user) =>
-      _users.doc(user.id).set({'name': user.name});
+  Future<void> saveUser(UserModel user) => _users
+      .doc(user.id)
+      .set({'name': user.name, 'isPlaceholder': user.isPlaceholder});
 
   @override
   Future<void> deleteUser(String id) => _users.doc(id).delete();
@@ -240,7 +244,7 @@ class FirestoreRepository implements ExpensioRepository {
   @override
   Future<void> saveExpense(ExpenseModel expense) async {
     final map = _expenseToMap(expense);
-    // For a group expense, every group member should be able to see it — not
+    // For a group expense, every group member should be able to see it, not
     // just the people split on this one bill. Denormalize the group's members
     // onto `visibleTo` so the rules permit the write and it syncs to everyone
     // in the group (always including the writer as a fallback). Personal
@@ -297,9 +301,9 @@ class FirestoreRepository implements ExpensioRepository {
         8, (_) => _codeAlphabet[r.nextInt(_codeAlphabet.length)]).join();
   }
 
-  // Placeholder (dummy) members have uuid ids (with dashes); real accounts are
-  // Firebase uids (no dashes). Used to decide who a joiner may claim.
-  bool _isPlaceholder(String id) => id.contains('-');
+  // Whether a stored user doc represents an unclaimed placeholder member.
+  bool _isPlaceholderData(Map<String, dynamic>? d) =>
+      d?['isPlaceholder'] as bool? ?? false;
 
   @override
   Future<String> createInvite(String groupId) async {
@@ -315,8 +319,8 @@ class FirestoreRepository implements ExpensioRepository {
     // (who can't read the group yet) can pick which one they are.
     final roster = <Map<String, dynamic>>[];
     for (final id in memberIds) {
-      if (!_isPlaceholder(id)) continue;
       final u = await _users.doc(id).get();
+      if (!_isPlaceholderData(u.data())) continue;
       roster.add({'id': id, 'name': u.data()?['name'] as String? ?? 'Member'});
     }
 
@@ -407,7 +411,7 @@ class FirestoreRepository implements ExpensioRepository {
     });
 
     // 2) As a member now, fix up the group's history: ensure we can see every
-    //    expense/settlement, and — if claiming — rewrite the placeholder to us.
+    //    expense/settlement, and if claiming, rewrite the placeholder to us.
     final exp = await _expenses.where('groupId', isEqualTo: groupId).get();
     final sets = await _settlements.where('groupId', isEqualTo: groupId).get();
     final batch = _db.batch();

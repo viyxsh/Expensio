@@ -34,7 +34,7 @@ class SettlementModel extends HiveObject {
 
   /// 'pending' (awaiting the payee's confirmation) or 'confirmed'. Legacy
   /// records (written before two-sided confirmation) default to confirmed.
-  @HiveField(6)
+  @HiveField(6, defaultValue: statusConfirmed)
   String status;
 
   /// The user id who marked this payment (drives "awaiting confirmation" vs the

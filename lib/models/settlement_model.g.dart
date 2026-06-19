@@ -23,8 +23,7 @@ class SettlementModelAdapter extends TypeAdapter<SettlementModel> {
       toId: fields[3] as String,
       amountCents: fields[4] as int,
       createdAt: fields[5] as DateTime,
-      // Legacy records (written before two-sided confirmation) have no field 6.
-      status: (fields[6] as String?) ?? SettlementModel.statusConfirmed,
+      status: fields[6] == null ? 'confirmed' : fields[6] as String,
       markedById: fields[7] as String?,
     );
   }

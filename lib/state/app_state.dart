@@ -9,8 +9,8 @@ import '../models/settlement_model.dart';
 
 /// In-memory, reactive view of the active [ExpensioRepository]. Subscribes to
 /// the repository streams once and exposes synchronous getters so screens can
-/// keep their existing build code (just swap `HiveService.x` → `appState.x` and
-/// `ValueListenableBuilder` → `ListenableBuilder(listenable: appState)`).
+/// keep their existing build code (just swap `HiveService.x` for `appState.x` and
+/// `ValueListenableBuilder` for `ListenableBuilder(listenable: appState)`).
 ///
 /// Works identically for Hive (local) and Firestore (cloud) since it only
 /// depends on the repository interface. Writes pass through to the repository;
@@ -66,6 +66,21 @@ class AppState extends ChangeNotifier {
         : (existing?.name ?? 'You');
     if (existing == null || existing.name != desired) {
       await _repo.saveUser(UserModel(id: uid, name: desired));
+    }
+  }
+
+  /// One-time data fix for members created before [UserModel.isPlaceholder]
+  /// existed. Those legacy ghost members used random UUID ids (with dashes),
+  /// while real accounts use dashless Firebase uids (and [selfId], the current
+  /// account/guest, is always real). Tag any unflagged dashed-id member as a
+  /// placeholder so claim + settlement logic no longer relies on the id shape.
+  /// Idempotent: only rewrites docs that still lack the flag, so it's a no-op
+  /// once migrated.
+  Future<void> backfillPlaceholderFlags(String selfId) async {
+    for (final u in List<UserModel>.from(_users)) {
+      if (u.isPlaceholder || u.id == selfId || !u.id.contains('-')) continue;
+      u.isPlaceholder = true;
+      await _repo.saveUser(u);
     }
   }
 

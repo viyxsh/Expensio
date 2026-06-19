@@ -6,9 +6,9 @@ import 'services.dart';
 
 /// Keeps the cloud data layer in sync with the signed-in user (cloud mode
 /// only). The Firestore repository is scoped to a uid, so when the user signs
-/// into a different account — a different uid — the repository and the shared
+/// into a different account (a different uid), the repository and the shared
 /// [AppState] must be rebuilt to point at that account's data. Linking an
-/// account (guest→email/Google) keeps the same uid, so it only refreshes the
+/// account (guest to email/Google) keeps the same uid, so it only refreshes the
 /// profile name; no rebind.
 class SessionController {
   SessionController(this._auth, this._state);
@@ -29,7 +29,7 @@ class SessionController {
 
   Future<void> _onAuthChanged(AppUser? user) async {
     if (user == null) {
-      // Fully signed out — drop back to a fresh guest. The resulting sign-in
+      // Fully signed out. Drop back to a fresh guest. The resulting sign-in
       // re-emits and binds below.
       _boundUid = null;
       await _auth.signInAsGuest();
@@ -49,6 +49,7 @@ class SessionController {
     Services.repository = repo;
     await _state.bindTo(repo);
     await _state.ensureSelfProfile(user.id, name: _selfName(user));
+    await _state.backfillPlaceholderFlags(user.id);
   }
 
   /// Best display name for the user's own profile, or null to keep the current.

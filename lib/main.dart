@@ -28,14 +28,14 @@ void main() async {
   await NotificationService.init();
 
   // Try Firebase (multi-device). Falls back to local-only mode when the
-  // project isn't configured yet — see SETUP.md.
+  // project isn't configured yet. See SETUP.md.
   final stack = await FirebaseBootstrap.start();
   if (stack != null) {
     Services.firebaseActive = true;
     Services.auth = stack.auth;
     Services.repository = stack.repository;
 
-    // The session controller owns the repository↔uid binding: it performs the
+    // The session controller owns the repository/uid binding: it performs the
     // initial subscribe and rebuilds the cache whenever the signed-in user
     // changes (sign-in / sign-out / switching accounts).
     Services.state = AppState(stack.repository);
@@ -51,6 +51,7 @@ void main() async {
     await Services.state.init();
     // Local mode has a single stable guest; ensure its "You" profile once.
     await Services.state.ensureSelfProfile(Services.currentUserId);
+    await Services.state.backfillPlaceholderFlags(Services.currentUserId);
     debugPrint('[Expensio] 📦 LOCAL mode — Hive (Firebase not active)');
   }
 
