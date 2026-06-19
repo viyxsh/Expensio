@@ -7,6 +7,7 @@ import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
 import 'add_personal_expense_screen.dart';
+import 'monthly_unwrapped.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -37,6 +38,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
           return CustomScrollView(
             slivers: [
+              // Monthly Unwrapped recap (hidden when this month has no spending)
+              SliverToBoxAdapter(
+                child: MonthlyUnwrappedCard(expenses: all),
+              ),
+
               // Charts section
               SliverToBoxAdapter(
                 child: _ChartsSection(expenses: all),
