@@ -59,15 +59,6 @@ class GroupDetailScreen extends StatelessWidget {
           appBar: AppBar(
             title: Text(g.name),
             actions: [
-              TextButton.icon(
-                onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => SettlementScreen(group: g))),
-                icon:
-                    const Icon(Icons.account_balance_wallet_outlined, size: 18),
-                label: const Text('Settle Up'),
-                style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
-              ),
               PopupMenuButton<String>(
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -116,6 +107,21 @@ class GroupDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildSummaryCards(g, expenses),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.push(context,
+                              MaterialPageRoute(
+                                  builder: (_) => SettlementScreen(group: g))),
+                          icon: const Icon(
+                              Icons.account_balance_wallet_outlined,
+                              size: 18),
+                          label: const Text('Settle Up'),
+                          style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.primary),
+                        ),
+                      ),
                       const SizedBox(height: 20),
                       _buildMembersSection(members, balances),
                       const SizedBox(height: 20),
@@ -170,9 +176,10 @@ class GroupDetailScreen extends StatelessWidget {
   Widget _buildSummaryCards(GroupModel g, List<ExpenseModel> expenses) {
     final groupExp = expenses.where((e) => !e.isPersonal).toList();
     final total = groupExp.fold<int>(0, (s, e) => s + e.totalAmount);
-    return Row(
+    return Column(
       children: [
-        Expanded(
+        SizedBox(
+          width: double.infinity,
           child: InfoCard(
             label: 'Total Spent',
             value: Money.withSymbol(total, decimals: 0),
@@ -180,21 +187,25 @@ class GroupDetailScreen extends StatelessWidget {
             valueColor: AppTheme.primary,
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: InfoCard(
-            label: 'Transactions',
-            value: '${groupExp.length}',
-            icon: Icons.receipt_long_outlined,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: InfoCard(
-            label: 'Members',
-            value: '${g.memberIds.length}',
-            icon: Icons.people_outline,
-          ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: InfoCard(
+                label: 'Transactions',
+                value: '${groupExp.length}',
+                icon: Icons.receipt_long_outlined,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: InfoCard(
+                label: 'Members',
+                value: '${g.memberIds.length}',
+                icon: Icons.people_outline,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -257,9 +268,10 @@ class GroupDetailScreen extends StatelessWidget {
 
   Widget _buildActionButtons(
       BuildContext context, GroupModel g, List<UserModel> members) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
@@ -272,8 +284,9 @@ class GroupDetailScreen extends StatelessWidget {
         // Bill scanning uses the camera + on-device ML Kit OCR, neither of
         // which is available on web.
         if (!kIsWeb) ...[
-          const SizedBox(width: 10),
-          Expanded(
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => Navigator.push(context,
                   MaterialPageRoute(
