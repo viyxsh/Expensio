@@ -1,13 +1,19 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../data/balances.dart';
 import '../models/expense_model.dart';
+import '../models/group_model.dart';
+import '../models/user_model.dart';
 import '../services/app_settings.dart';
 import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
 import 'add_personal_expense_screen.dart';
+import 'bill_scan_screen.dart';
 import 'budget_screen.dart';
 import 'monthly_unwrapped.dart';
 
@@ -18,8 +24,141 @@ class TransactionsScreen extends StatefulWidget {
   State<TransactionsScreen> createState() => _TransactionsScreenState();
 }
 
-class _TransactionsScreenState extends State<TransactionsScreen> {
+class _TransactionsScreenState extends State<TransactionsScreen>
+    with SingleTickerProviderStateMixin {
   String _filterCategory = 'All';
+  late final AnimationController _fabController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 250),
+  );
+  bool _fabOpen = false;
+
+  @override
+  void dispose() {
+    _fabController.dispose();
+    super.dispose();
+  }
+
+  void _toggleFab() {
+    setState(() => _fabOpen = !_fabOpen);
+    _fabOpen ? _fabController.forward() : _fabController.reverse();
+  }
+
+  Animation<double> _fabOptionAnim(int index) {
+    final start = (index * 0.35).clamp(0.0, 0.65);
+    return CurvedAnimation(
+      parent: _fabController,
+      curve: Interval(start, start + 0.65, curve: Curves.easeOutCubic),
+    );
+  }
+
+  void _openAddTransaction() {
+    _toggleFab();
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const AddPersonalExpenseScreen()));
+  }
+
+  Future<void> _openScanBill() async {
+    _toggleFab();
+    if (!mounted) return;
+
+    // Sentinels for the first sheet: 'personal' vs 'group'.
+    const personal = 'personal';
+    const groupChoice = 'group';
+    final result = await showModalBottomSheet<Object>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: AppTheme.surfaceMid,
+                child:
+                    Icon(Icons.people_outline, color: AppTheme.primary, size: 20),
+              ),
+              title: const Text('Group'),
+              onTap: () => Navigator.pop(ctx, groupChoice),
+            ),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: AppTheme.surfaceMid,
+                child:
+                    Icon(Icons.person_outline, color: AppTheme.primary, size: 20),
+              ),
+              title: const Text('Personal transaction'),
+              onTap: () => Navigator.pop(ctx, personal),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+
+    if (result == personal) {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const BillScanScreen()));
+      return;
+    }
+
+    // Group chosen: show the group picker.
+    final groups = Services.state.getAllGroups();
+    if (!mounted) return;
+    if (groups.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Create a group first to scan a bill into it')));
+      return;
+    }
+    final group = await showModalBottomSheet<GroupModel>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              child: Text('Select group',
+                  style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
+            ),
+            for (final g in groups)
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppTheme.surfaceMid,
+                  child: Text(
+                      g.name.isNotEmpty ? g.name[0].toUpperCase() : '?',
+                      style: TextStyle(color: AppTheme.primary)),
+                ),
+                title: Text(g.name),
+                subtitle: Text('${g.memberIds.length} members',
+                    style: TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 12)),
+                onTap: () => Navigator.pop(ctx, g),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (group == null || !mounted) return;
+    final members = group.memberIds
+        .map(Services.state.getUserById)
+        .whereType<UserModel>()
+        .toList();
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => BillScanScreen(group: group, members: members)));
+  }
   static const List<String> _filterOptions = [
     'All','Groceries','Food & Drink','Electronics','Clothing',
     'Transport','Health','Entertainment','Utilities','General',
@@ -29,9 +168,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Transactions')),
-      body: ListenableBuilder(
-        listenable: Services.state,
-        builder: (context, _) {
+      body: Stack(
+        children: [
+          ListenableBuilder(
+            listenable: Services.state,
+            builder: (context, _) {
           final uid = Services.currentUserId;
           // Only show expenses the user is actually part of: their personal
           // ones, ones they paid, or ones they're in the split for. Expenses
@@ -137,17 +278,62 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ],
           );
         },
+          ),
+          // Scrim shown behind the expanded FAB options
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: !_fabOpen,
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                    parent: _fabController, curve: Curves.easeOut),
+                child: GestureDetector(
+                  onTap: _toggleFab,
+                  child:
+                      Container(color: Colors.black.withValues(alpha: 0.55)),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => const AddPersonalExpenseScreen()),
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('New Transaction'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: AppTheme.onPrimary,
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          IgnorePointer(
+            ignoring: !_fabOpen,
+            child: _FabAction(
+              animation: _fabOptionAnim(0),
+              label: 'Scan Bill',
+              icon: Icons.document_scanner_outlined,
+              onTap: _openScanBill,
+            ),
+          ),
+          if (!kIsWeb)
+            IgnorePointer(
+              ignoring: !_fabOpen,
+              child: _FabAction(
+                animation: _fabOptionAnim(1),
+                label: 'Add Transaction',
+                icon: Icons.receipt_long_outlined,
+                onTap: _openAddTransaction,
+              ),
+            ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'transactionsFab',
+            onPressed: _toggleFab,
+            backgroundColor: AppTheme.primary,
+            foregroundColor: AppTheme.onPrimary,
+            child: AnimatedBuilder(
+              animation: _fabController,
+              builder: (_, __) => Transform.rotate(
+                angle: _fabController.value * math.pi * 3 / 4,
+                child: const Icon(Icons.add),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1059,5 +1245,75 @@ class _TransactionTile extends StatelessWidget {
       default:
         return Icons.receipt_outlined;
     }
+  }
+}
+
+/// One expandable FAB option: a label pill plus a small round icon button,
+/// revealed above the main FAB with a staggered fade/slide/scale animation.
+class _FabAction extends StatelessWidget {
+  final Animation<double> animation;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _FabAction({
+    required this.animation,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.4),
+          end: Offset.zero,
+        ).animate(animation),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.6, end: 1.0).animate(animation),
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Material(
+                  color: AppTheme.surfaceHigh,
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                FloatingActionButton.small(
+                  heroTag: 'fabAction_$label',
+                  backgroundColor: AppTheme.surfaceHigh,
+                  foregroundColor: AppTheme.primary,
+                  elevation: 2,
+                  onPressed: onTap,
+                  child: Icon(icon, size: 20),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
