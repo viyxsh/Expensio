@@ -7,8 +7,10 @@ import '../utils/money.dart';
 
 class AddPersonalExpenseScreen extends StatefulWidget {
   final ExpenseModel? expense; // for edit mode
+  final int? prefillTotalCents; // from bill scan
 
-  const AddPersonalExpenseScreen({super.key, this.expense});
+  const AddPersonalExpenseScreen(
+      {super.key, this.expense, this.prefillTotalCents});
 
   @override
   State<AddPersonalExpenseScreen> createState() =>
@@ -42,6 +44,8 @@ class _AddPersonalExpenseScreenState
       _amountCtrl.text = Money.format(e.totalAmount);
       _category = e.category;
       _selectedDateTime = e.createdAt;
+    } else if (widget.prefillTotalCents != null) {
+      _amountCtrl.text = Money.format(widget.prefillTotalCents!);
     }
   }
 

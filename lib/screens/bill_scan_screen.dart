@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -7,15 +8,18 @@ import '../models/user_model.dart';
 import '../models/bill_item_model.dart';
 import '../services/gemini_service.dart';
 import '../utils/app_theme.dart';
+import '../utils/money.dart';
 import 'add_expense_screen.dart';
+import 'add_personal_expense_screen.dart';
 
 enum ScanState { idle, processing, done, error }
 
 class BillScanScreen extends StatefulWidget {
-  final GroupModel group;
+  /// Null when scanning a bill for a personal transaction.
+  final GroupModel? group;
   final List<UserModel> members;
 
-  const BillScanScreen({super.key, required this.group, required this.members});
+  const BillScanScreen({super.key, this.group, this.members = const []});
 
   @override
   State<BillScanScreen> createState() => _BillScanScreenState();
@@ -43,31 +47,27 @@ class _BillScanScreenState extends State<BillScanScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      setState(() {
-        _state = ScanState.processing;
-        _items = [];
-        _statusMessage = 'Loading image...';
-      });
-
       final picked = await _picker.pickImage(
         source: source,
         imageQuality: 90,
         maxWidth: 2000,
       );
 
-      if (picked == null) {
-        setState(() => _state = ScanState.idle);
-        return;
-      }
+      if (picked == null) return;
 
-      _image = File(picked.path);
+      setState(() {
+        _image = File(picked.path);
+        _state = ScanState.processing;
+        _items = [];
+      });
       await _processBill();
     } catch (e, st) {
       debugPrint('[BillScan] Image pick error: $e\n$st');
-      setState(() {
-        _state = ScanState.error;
-        _statusMessage = 'Could not load the image. Please try again.';
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content:
+                Text('Could not load the image. Please try again.')));
+      }
     }
   }
 
@@ -90,7 +90,7 @@ class _BillScanScreenState extends State<BillScanScreen> {
       }
 
       // Gemini
-      setState(() => _statusMessage = 'Analyzing bill with AI...');
+      setState(() => _statusMessage = 'Extracting items...');
 
       final parsedItems = await GeminiService.parseBillText(rawText);
 
@@ -248,15 +248,20 @@ class _BillScanScreenState extends State<BillScanScreen> {
   void _proceedToAddExpense() {
     final total =
     _items.fold<double>(0, (s, i) => s + i.price * i.quantity);
+    final group = widget.group;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => AddExpenseScreen(
-          group: widget.group,
-          members: widget.members,
-          prefillItems: _items,
-          prefillTotal: total,
-        ),
+        builder: (_) => group != null
+            ? AddExpenseScreen(
+                group: group,
+                members: widget.members,
+                prefillItems: _items,
+                prefillTotal: total,
+              )
+            : AddPersonalExpenseScreen(
+                prefillTotalCents: Money.fromMajor(total),
+              ),
       ),
     );
   }
@@ -266,16 +271,6 @@ class _BillScanScreenState extends State<BillScanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan Bill'),
-        actions: [
-          if (_state == ScanState.done && _items.isNotEmpty)
-            TextButton(
-              onPressed: _proceedToAddExpense,
-              child: Text('Use Items',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primary)),
-            ),
-        ],
       ),
       body: _buildBody(),
     );
@@ -295,59 +290,59 @@ class _BillScanScreenState extends State<BillScanScreen> {
   }
 
   Widget _buildIdle() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [Color(0xFF4285F4), Color(0xFF34A853)]),
-              borderRadius: BorderRadius.circular(10),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Upload a photo of the receipt',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary)),
+            const SizedBox(height: 16),
+            // Dotted drop zone: tap to pick a file from gallery.
+            GestureDetector(
+              onTap: () => _pickImage(ImageSource.gallery),
+              child: AspectRatio(
+                aspectRatio: 1.5,
+                child: CustomPaint(
+                  painter: _DashedRRectPainter(
+                      color: _image == null
+                          ? AppTheme.divider
+                          : AppTheme.primary),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: _image != null
+                        ? Image.file(_image!, fit: BoxFit.cover)
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.image_outlined,
+                                  size: 48, color: AppTheme.textSecondary),
+                              const SizedBox(height: 10),
+                              Text('Select file',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.textSecondary)),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.auto_awesome, color: AppTheme.surface, size: 16),
-                const SizedBox(width: 6),
-                Text('Powered by Gemini AI',
-                    style: TextStyle(
-                        color: AppTheme.surface,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13)),
-              ],
+            const SizedBox(height: 20),
+            Divider(color: AppTheme.divider, height: 1),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: () => _pickImage(ImageSource.camera),
+              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+              label: const Text('Open camera and take photo'),
             ),
-          ),
-          const SizedBox(height: 20),
-          Text('Scan a Bill',
-              style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary)),
-          const SizedBox(height: 8),
-          Text(
-            'Take a photo or upload a screenshot. AI will extract items, prices, and categories automatically.',
-            style: TextStyle(
-                fontSize: 15, color: AppTheme.textSecondary, height: 1.5),
-          ),
-          const SizedBox(height: 32),
-          _PickerCard(
-            icon: Icons.camera_alt_outlined,
-            title: 'Take a Photo',
-            subtitle: 'Capture a receipt with your camera',
-            onTap: () => _pickImage(ImageSource.camera),
-          ),
-          const SizedBox(height: 12),
-          _PickerCard(
-            icon: Icons.image_outlined,
-            title: 'Upload from Gallery',
-            subtitle: 'Choose a screenshot or saved image',
-            onTap: () => _pickImage(ImageSource.gallery),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -379,28 +374,6 @@ class _BillScanScreenState extends State<BillScanScreen> {
                   color: AppTheme.textPrimary),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFF4285F4), Color(0xFF34A853)]),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome,
-                      color: AppTheme.surface, size: 14),
-                  const SizedBox(width: 6),
-                  Text('Gemini AI is working...',
-                      style:
-                      TextStyle(color: AppTheme.surface, fontSize: 13)),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -430,32 +403,10 @@ class _BillScanScreenState extends State<BillScanScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF4285F4),
-                                  Color(0xFF34A853)
-                                ]),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('AI Parsed',
-                              style: TextStyle(
-                                  color: AppTheme.surface,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('${_items.length} items found',
-                            style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 13)),
-                      ],
-                    ),
+                    Text('${_items.length} items found',
+                        style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 13)),
                     const SizedBox(height: 4),
                     Text(
                       'Total: Rs ${total.toStringAsFixed(2)}',
@@ -497,34 +448,37 @@ class _BillScanScreenState extends State<BillScanScreen> {
 
         // Bottom bar
         Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppTheme.surface,
             border: Border(top: BorderSide(color: AppTheme.divider)),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => setState(() {
-                    _state = ScanState.idle;
-                    _items = [];
-                    _image = null;
-                  }),
-                  child: const Text('Rescan'),
-                ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() {
+                        _state = ScanState.idle;
+                        _items = [];
+                        _image = null;
+                      }),
+                      child: const Text('Rescan'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed:
+                      _items.isNotEmpty ? _proceedToAddExpense : null,
+                      child: const Text('Use'),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed:
-                  _items.isNotEmpty ? _proceedToAddExpense : null,
-                  icon: const Icon(Icons.arrow_forward, size: 18),
-                  label: const Text('Use These Items'),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],
@@ -563,8 +517,10 @@ class _BillScanScreenState extends State<BillScanScreen> {
                   height: 1.5),
             ),
             const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 OutlinedButton.icon(
                   onPressed: () => setState(() {
@@ -574,7 +530,6 @@ class _BillScanScreenState extends State<BillScanScreen> {
                   icon: const Icon(Icons.refresh, size: 18),
                   label: const Text('Try Again'),
                 ),
-                const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: _addItem,
                   icon: const Icon(Icons.edit_outlined, size: 18),
@@ -589,59 +544,44 @@ class _BillScanScreenState extends State<BillScanScreen> {
   }
 }
 
-class _PickerCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+/// Paints a rounded rectangle with a dashed stroke, used for the
+/// receipt upload drop zone.
+class _DashedRRectPainter extends CustomPainter {
+  final Color color;
 
-  const _PickerCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+  _DashedRRectPainter({required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: AppTheme.primary, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600)),
-                    Text(subtitle,
-                        style: TextStyle(
-                            fontSize: 13, color: AppTheme.textSecondary)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right,
-                  color: AppTheme.textSecondary),
-            ],
-          ),
-        ),
-      ),
+  void paint(Canvas canvas, Size size) {
+    const radius = 16.0;
+    const dashLength = 6.0;
+    const gapLength = 5.0;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6;
+
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
     );
+    final path = Path()..addRRect(rrect);
+
+    final dashed = Path();
+    for (final metric in path.computeMetrics()) {
+      double dist = 0;
+      while (dist < metric.length) {
+        final next = math.min(dist + dashLength, metric.length);
+        dashed.addPath(metric.extractPath(dist, next), Offset.zero);
+        dist = next + gapLength;
+      }
+    }
+    canvas.drawPath(dashed, paint);
   }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _ItemCard extends StatelessWidget {
