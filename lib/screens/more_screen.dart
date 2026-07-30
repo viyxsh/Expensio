@@ -69,52 +69,64 @@ class _MoreScreenState extends State<MoreScreen> {
         valueListenable: Hive.box('settings').listenable(),
         builder: (_, __, ___) {
           final current = AppSettings.currencyCode;
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _sheetHandle(),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Select Currency',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
-                ),
-              ),
-              ...AppSettings.currencies.map((c) => ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceMid,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        c['symbol']!,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14),
-                      ),
-                    ),
-                    title: Text(c['name']!,
-                        style: const TextStyle(fontSize: 14)),
-                    subtitle: Text(c['code']!,
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sheetHandle(),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Select Currency',
                         style: TextStyle(
-                            fontSize: 12, color: AppTheme.textSecondary)),
-                    trailing: current == c['code']
-                        ? Icon(Icons.check_circle,
-                            color: AppTheme.primary, size: 20)
-                        : null,
-                    onTap: () {
-                      AppSettings.setCurrency(c['code']!);
-                      Navigator.pop(ctx);
-                    },
-                  )),
-              const SizedBox(height: 16),
-            ],
+                            fontSize: 18, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: AppSettings.currencies
+                        .map((c) => ListTile(
+                              contentPadding:
+                                  const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 2),
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surfaceMid,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  c['symbol']!,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14),
+                                ),
+                              ),
+                              title: Text(c['name']!,
+                                  style: const TextStyle(fontSize: 14)),
+                              subtitle: Text(c['code']!,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.textSecondary)),
+                              trailing: current == c['code']
+                                  ? Icon(Icons.check_circle,
+                                      color: AppTheme.primary, size: 20)
+                                  : null,
+                              onTap: () {
+                                AppSettings.setCurrency(c['code']!);
+                                Navigator.pop(ctx);
+                              },
+                            ))
+                        .toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           );
         },
       ),
@@ -145,36 +157,38 @@ class _MoreScreenState extends State<MoreScreen> {
         valueListenable: Hive.box('settings').listenable(),
         builder: (_, __, ___) {
           final current = AppSettings.themeMode;
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _sheetHandle(),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Appearance',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sheetHandle(),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Appearance',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w700)),
+                  ),
                 ),
-              ),
-              for (final (mode, label, icon) in options)
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
-                  leading: Icon(icon, color: AppTheme.textSecondary),
-                  title: Text(label, style: const TextStyle(fontSize: 14)),
-                  trailing: current == mode
-                      ? Icon(Icons.check_circle,
-                          color: AppTheme.primary, size: 20)
-                      : null,
-                  onTap: () {
-                    AppSettings.setThemeMode(mode);
-                    Navigator.pop(ctx);
-                  },
-                ),
-              const SizedBox(height: 16),
-            ],
+                for (final (mode, label, icon) in options)
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                    leading: Icon(icon, color: AppTheme.textSecondary),
+                    title: Text(label, style: const TextStyle(fontSize: 14)),
+                    trailing: current == mode
+                        ? Icon(Icons.check_circle,
+                            color: AppTheme.primary, size: 20)
+                        : null,
+                    onTap: () {
+                      AppSettings.setThemeMode(mode);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                const SizedBox(height: 16),
+              ],
+            ),
           );
         },
       ),
@@ -688,7 +702,7 @@ class _AccountCard extends StatelessWidget {
             : 'Guest';
         final subtitle = signedIn
             ? (user.email ?? 'Synced across your devices')
-            : 'Sign in to sync across devices';
+            : 'Sign in to sync';
 
         return Container(
           decoration: BoxDecoration(
