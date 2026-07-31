@@ -3,7 +3,9 @@ import '../models/settlement_model.dart';
 import '../utils/money.dart';
 
 /// Pure balance computation, shared by every repository implementation (and
-/// easy to unit-test). All amounts are in minor units (cents).
+/// easy to unit-test). All amounts are in minor units (cents), expressed in
+/// the user's reporting currency: each expense is converted from its own
+/// [ExpenseModel.currencyCode] before it touches a balance.
 ///
 /// Returns net balance per userId: +ve = they are owed money, -ve = they owe.
 /// Group expenses split exactly (remainder distributed); recorded settlements
@@ -18,12 +20,13 @@ Map<String, int> computeBalancesFrom(
     if (expense.isPersonal) continue;
 
     final payerId = expense.payerId;
+    final code = expense.currencyCode;
 
     if (expense.splitMap.isNotEmpty) {
-      // Explicit split map (already in cents).
+      // Explicit split map (already in cents, in the expense's currency).
       for (final entry in expense.splitMap.entries) {
         final userId = entry.key;
-        final owes = entry.value;
+        final owes = Money.convert(entry.value, code);
         if (userId == payerId) continue;
         balances[payerId] = (balances[payerId] ?? 0) + owes;
         balances[userId] = (balances[userId] ?? 0) - owes;
@@ -36,7 +39,7 @@ Map<String, int> computeBalancesFrom(
       for (int i = 0; i < participants.length; i++) {
         final uid = participants[i];
         if (uid == payerId) continue;
-        final share = shares[i];
+        final share = Money.convert(shares[i], code);
         balances[payerId] = (balances[payerId] ?? 0) + share;
         balances[uid] = (balances[uid] ?? 0) - share;
       }

@@ -51,7 +51,8 @@ class MonthlyWrapped {
     ExpenseModel? biggest;
     var biggestCents = 0;
     for (final e in inMonth) {
-      final amt = userAmountOf(e, uid);
+      // Recap stats are reported in the user's reporting currency.
+      final amt = Money.convert(userAmountOf(e, uid), e.currencyCode);
       if (amt <= 0) continue; // not the user's spending
       catTotals[e.category] = (catTotals[e.category] ?? 0) + amt;
       total += amt;

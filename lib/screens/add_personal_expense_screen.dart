@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/expense_model.dart';
+import '../services/app_settings.dart';
 import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
@@ -71,6 +72,8 @@ class _AddPersonalExpenseScreenState
       createdAt: _selectedDateTime,
       category: _category,
       isPersonal: true,
+      currencyCode:
+          _isEdit ? widget.expense!.currencyCode : AppSettings.currencyCode,
     );
 
     try {

@@ -4,6 +4,7 @@ import '../models/group_model.dart';
 import '../models/expense_model.dart';
 import '../models/user_model.dart';
 import '../models/bill_item_model.dart';
+import '../services/app_settings.dart';
 import '../services/services.dart';
 import '../utils/app_theme.dart';
 import '../utils/money.dart';
@@ -286,6 +287,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       isPersonal: false,
       splitMap: split,
       createdBy: existing?.ownerId ?? Services.currentUserId,
+      // Keep the currency it was recorded in; edits don't re-denominate.
+      currencyCode: existing?.currencyCode ?? AppSettings.currencyCode,
     );
 
     try {

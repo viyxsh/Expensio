@@ -427,7 +427,10 @@ class _ChartsSectionState extends State<_ChartsSection> {
     final uid = Services.currentUserId;
     int cents(int i, bool Function(DateTime) inBucket) => expenses
         .where((e) => inBucket(e.createdAt))
-        .fold<int>(0, (s, e) => s + userAmountOf(e, uid));
+        .fold<int>(
+            0,
+            (s, e) =>
+                s + Money.convert(userAmountOf(e, uid), e.currencyCode));
 
     switch (_period) {
       case _StatsPeriod.week:
@@ -473,17 +476,18 @@ class _ChartsSectionState extends State<_ChartsSection> {
     final uid = Services.currentUserId;
 
     // Category breakdown for pie chart, using each expense's amount from the
-    // current user's point of view (their share, or the full total if they paid).
+    // current user's point of view (their share, or the full total if they
+    // paid), converted into the reporting currency.
     final catTotals = <String, int>{};
     for (final e in periodExpenses) {
-      final amt = userAmountOf(e, uid);
+      final amt = Money.convert(userAmountOf(e, uid), e.currencyCode);
       if (amt == 0) continue;
       catTotals[e.category] = (catTotals[e.category] ?? 0) + amt;
     }
     final sorted = catTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final total =
-        periodExpenses.fold<int>(0, (s, e) => s + userAmountOf(e, uid));
+    final total = periodExpenses.fold<int>(
+        0, (s, e) => s + Money.convert(userAmountOf(e, uid), e.currencyCode));
 
     // Bar chart bucketed at the period's natural granularity.
     final barData = _buildBars(periodExpenses);
@@ -1175,7 +1179,8 @@ class _TransactionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                Money.withSymbol(amount, decimals: 0),
+                // Tiles show the transaction in its original currency.
+                Money.withSymbolIn(amount, expense.currencyCode, decimals: 0),
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -1201,7 +1206,9 @@ class _TransactionTile extends StatelessWidget {
     if (expense.payerId == uid) {
       final lent = expense.totalAmount - userShareOf(expense, uid);
       return Text(
-        lent > 0 ? 'you lent ${Money.withSymbol(lent, decimals: 0)}' : 'you paid',
+        lent > 0
+            ? 'you lent ${Money.withSymbolIn(lent, expense.currencyCode, decimals: 0)}'
+            : 'you paid',
         style: captionStyle,
       );
     }

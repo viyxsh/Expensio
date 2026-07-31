@@ -202,7 +202,8 @@ class _MoreScreenState extends State<MoreScreen> {
     for (final e in allExpenses) {
       final key =
           '${e.createdAt.year}-${e.createdAt.month.toString().padLeft(2, '0')}';
-      monthly[key] = (monthly[key] ?? 0) + e.totalAmount;
+      monthly[key] = (monthly[key] ?? 0) +
+          Money.convert(e.totalAmount, e.currencyCode);
     }
 
     final sorted = monthly.entries.toList()
@@ -335,6 +336,7 @@ class _MoreScreenState extends State<MoreScreen> {
                   'id': e.id,
                   'title': e.title,
                   'totalAmount': Money.toMajor(e.totalAmount),
+                  'currencyCode': e.currencyCode,
                   'payerId': e.payerId,
                   'participantIds': e.participantIds,
                   'groupId': e.groupId,
@@ -466,7 +468,8 @@ class _MoreScreenState extends State<MoreScreen> {
               final monthStart = DateTime(now.year, now.month);
               final monthTotal = allExpenses
                   .where((e) => !e.createdAt.isBefore(monthStart))
-                  .fold<int>(0, (s, e) => s + e.totalAmount);
+                  .fold<int>(0,
+                      (s, e) => s + Money.convert(e.totalAmount, e.currencyCode));
 
               final sym = AppSettings.currencySymbol;
               final currencyName = AppSettings.currencyName;

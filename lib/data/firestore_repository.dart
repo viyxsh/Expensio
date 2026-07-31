@@ -84,6 +84,7 @@ class FirestoreRepository implements ExpensioRepository {
   Map<String, dynamic> _expenseToMap(ExpenseModel e) => {
         'title': e.title,
         'totalAmount': e.totalAmount,
+        'currencyCode': e.currencyCode,
         'payerId': e.payerId,
         'participantIds': e.participantIds,
         'groupId': e.groupId,
@@ -115,6 +116,7 @@ class FirestoreRepository implements ExpensioRepository {
       splitMap: (d['splitMap'] as Map? ?? const {})
           .map((k, v) => MapEntry(k as String, (v as num).toInt())),
       createdBy: d['createdBy'] as String? ?? '',
+      currencyCode: d['currencyCode'] as String? ?? 'INR',
     );
   }
 

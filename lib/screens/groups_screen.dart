@@ -158,7 +158,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
               final expenses = Services.state.getExpensesByGroup(g.id);
               final total = expenses
                   .where((e) => !e.isPersonal)
-                  .fold<int>(0, (s, e) => s + e.totalAmount);
+                  .fold<int>(0,
+                      (s, e) => s + Money.convert(e.totalAmount, e.currencyCode));
               final members = g.memberIds
                   .map(Services.state.getUserById)
                   .whereType<UserModel>()

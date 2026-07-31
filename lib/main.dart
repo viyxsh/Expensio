@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'data/hive_repository.dart';
 import 'services/app_settings.dart';
 import 'services/auth_service.dart';
+import 'services/currency_service.dart';
 import 'services/firebase_bootstrap.dart';
 import 'services/hive_service.dart';
 import 'services/notification_service.dart';
@@ -27,6 +28,7 @@ void main() async {
 
   await dotenv.load(fileName: '.env');
   await HiveService.init();
+  await CurrencyService.init();
   await NotificationService.init();
 
   // Try Firebase (multi-device). Falls back to local-only mode when the
@@ -125,10 +127,12 @@ class _ExpensioAppState extends State<ExpensioApp>
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild whenever the theme-mode setting changes, and resolve the palette
-    // before building the theme so all AppTheme colour getters match.
+    // Rebuild whenever the theme-mode or reporting-currency setting changes,
+    // and resolve the palette before building the theme so all AppTheme
+    // colour getters match.
     return ValueListenableBuilder(
-      valueListenable: Hive.box('settings').listenable(keys: ['theme_mode']),
+      valueListenable: Hive.box('settings')
+          .listenable(keys: ['theme_mode', 'currency_code']),
       builder: (context, _, __) {
         AppTheme.brightness = _resolveBrightness();
         return MaterialApp(

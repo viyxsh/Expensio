@@ -175,7 +175,8 @@ class GroupDetailScreen extends StatelessWidget {
 
   Widget _buildSummaryCards(GroupModel g, List<ExpenseModel> expenses) {
     final groupExp = expenses.where((e) => !e.isPersonal).toList();
-    final total = groupExp.fold<int>(0, (s, e) => s + e.totalAmount);
+    final total = groupExp.fold<int>(
+        0, (s, e) => s + Money.convert(e.totalAmount, e.currencyCode));
     return Column(
       children: [
         SizedBox(
@@ -415,7 +416,8 @@ class _ExpenseCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                Money.withSymbol(expense.totalAmount),
+                // Show the expense in the currency it was recorded in.
+                Money.withSymbolIn(expense.totalAmount, expense.currencyCode),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,

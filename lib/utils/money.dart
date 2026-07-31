@@ -1,4 +1,5 @@
 import '../services/app_settings.dart';
+import '../services/currency_service.dart';
 
 /// Centralised money handling. All monetary values are stored and computed as
 /// integer **minor units** (cents/paise) to avoid floating-point drift. Major
@@ -24,9 +25,19 @@ class Money {
   static String format(int cents, {int decimals = 2}) =>
       (cents / 100).toStringAsFixed(decimals);
 
-  /// Numeric string prefixed with the active currency symbol, e.g. "Rs 1234.50".
+  /// Numeric string prefixed with the active reporting currency symbol.
   static String withSymbol(int cents, {int decimals = 2}) =>
       '${AppSettings.currencySymbol} ${format(cents, decimals: decimals)}';
+
+  /// Numeric string prefixed with [code]'s symbol — no conversion. Used to
+  /// show a transaction in the currency it was originally recorded in.
+  static String withSymbolIn(int cents, String code, {int decimals = 2}) =>
+      '${CurrencyService.symbolOf(code)} ${format(cents, decimals: decimals)}';
+
+  /// Converts [cents] from [fromCode] into the user's selected reporting
+  /// currency (identity when they match or a rate is missing).
+  static int convert(int cents, String fromCode) =>
+      CurrencyService.convert(cents, fromCode);
 
   /// Split [total] cents into [n] parts that sum **exactly** to [total].
   /// The first `remainder` parts each receive one extra cent so no money is

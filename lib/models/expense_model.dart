@@ -45,6 +45,11 @@ class ExpenseModel extends HiveObject {
   @HiveField(11, defaultValue: '')
   String createdBy;
 
+  /// ISO code of the currency this expense was recorded in (e.g. 'INR').
+  /// Amounts are never converted in storage; reports convert on the fly.
+  @HiveField(12, defaultValue: 'INR')
+  String currencyCode;
+
   ExpenseModel({
     required this.id,
     required this.title,
@@ -58,6 +63,7 @@ class ExpenseModel extends HiveObject {
     this.isPersonal = false,
     Map<String, int>? splitMap,
     this.createdBy = '',
+    this.currencyCode = 'INR',
   })  : items = items ?? [],
         splitMap = splitMap ?? {};
 

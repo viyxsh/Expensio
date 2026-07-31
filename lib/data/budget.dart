@@ -1,9 +1,11 @@
 import '../models/expense_model.dart';
+import '../utils/money.dart';
 import 'balances.dart';
 
 /// Pure budget maths, shared by the Budget screen and the home card (and easy
 /// to unit-test). "Spend" is the user's own amount per expense (their share, or
-/// the full total on expenses they paid), summed over the calendar month.
+/// the full total on expenses they paid), converted into the reporting
+/// currency, summed over the calendar month.
 class BudgetMath {
   BudgetMath._();
 
@@ -15,7 +17,7 @@ class BudgetMath {
     final out = <String, int>{};
     for (final e in all) {
       if (e.createdAt.isBefore(start) || !e.createdAt.isBefore(end)) continue;
-      final amt = userAmountOf(e, uid);
+      final amt = Money.convert(userAmountOf(e, uid), e.currencyCode);
       if (amt <= 0) continue;
       out[e.category] = (out[e.category] ?? 0) + amt;
     }
