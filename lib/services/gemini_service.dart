@@ -38,14 +38,29 @@ class GeminiService {
         'responseSchema': {
           'type': 'object',
           'properties': {
+            'is_receipt': {
+              'type': 'boolean',
+              'description':
+                  'True only if the document is an actual receipt, bill, '
+                      'or invoice recording a real transaction',
+            },
             'items': {
               'type': 'array',
               'items': {
                 'type': 'object',
                 'properties': {
                   'name': {'type': 'string'},
-                  'quantity': {'type': 'integer'},
-                  'price': {'type': 'number'},
+                  'quantity': {
+                    'type': 'integer',
+                    'description':
+                        'Only if explicitly printed. Null when not shown.'
+                  },
+                  'price': {
+                    'type': 'number',
+                    'description':
+                        'Only the exact printed value. Null when missing, '
+                            'illegible, or ambiguous.'
+                  },
                   'category': {
                     'type': 'string',
                     'enum': [
@@ -61,11 +76,13 @@ class GeminiService {
                     ]
                   },
                 },
-                'required': ['name', 'quantity', 'price', 'category'],
+                // price/quantity intentionally NOT required: they must stay
+                // null instead of being guessed.
+                'required': ['name', 'category'],
               }
             }
           },
-          'required': ['items'],
+          'required': ['is_receipt', 'items'],
         },
       },
     };
@@ -175,7 +192,28 @@ class GeminiService {
   }
 
   static String _buildPrompt(String ocrText) => '''
-Extract line items from this receipt.
+You are given OCR text from a photographed document. Decide first whether it
+is actually a receipt, and only then extract line items.
+
+IS IT A RECEIPT?
+- Set "is_receipt" to true ONLY for an actual receipt, bill, or invoice that
+  records a real transaction (e.g. shows prices/amounts, a seller, a date, or
+  payment information).
+- Do NOT treat a document as a receipt merely because it contains product
+  names, quantities, IDs/SKUs, or tabular data. Inventories, packing slips,
+  delivery notes, catalogs, price lists, spreadsheets, and random tables of
+  data are NOT receipts — set "is_receipt" to false and return an empty
+  items array.
+
+EXTRACTING ITEMS (only when is_receipt is true):
+- Extract each purchased line item with its name.
+- PRICE: use only the exact value printed on the document. If a price is
+  missing, illegible, ambiguous, or you would have to guess, compute, or
+  estimate it in any way, set "price" to null. NEVER infer, invent, calculate,
+  or default a missing price to zero.
+- QUANTITY: use the explicitly printed quantity. When none is shown, set
+  "quantity" to null rather than assuming one.
+- CATEGORY: pick the best fit from the allowed values.
 
 Receipt text:
 $ocrText
@@ -207,6 +245,13 @@ Return JSON only.
 
   static List<BillItem> _parseGeminiResponse(String rawText) {
     final parsed = jsonDecode(rawText) as Map<String, dynamic>;
+
+    // The model decides receipt-vs-not; product names, quantities, IDs, or
+    // tabular data alone are not proof of a transaction.
+    if (parsed['is_receipt'] != true) {
+      throw Exception('not_a_receipt');
+    }
+
     final items = (parsed['items'] as List<dynamic>? ?? const []);
     return items
         .map((e) => BillItem.fromJson(e as Map<String, dynamic>))

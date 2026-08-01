@@ -18,9 +18,9 @@ class BillItemAdapter extends TypeAdapter<BillItem> {
     };
     return BillItem(
       name: fields[0] as String,
-      price: fields[1] as double,
+      price: fields[1] as double?,
       category: fields[2] as String,
-      quantity: fields[3] as int,
+      quantity: fields[3] as int?,
       assignedUserIds: (fields[4] as List?)?.cast<String>(),
     );
   }

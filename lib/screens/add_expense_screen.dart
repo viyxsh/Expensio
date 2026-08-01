@@ -77,8 +77,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     if (widget.prefillItems != null) {
       _items = List.from(widget.prefillItems!);
-      final total = _items.fold<double>(0, (s, i) => s + i.price * i.quantity);
-      _amountCtrl.text = total.toStringAsFixed(2);
+      // Only explicitly known prices contribute; if nothing is readable the
+      // amount field stays empty for the user to fill in.
+      final total =
+          _items.fold<double>(0, (s, i) => s + (i.totalPrice ?? 0));
+      if (total > 0) _amountCtrl.text = total.toStringAsFixed(2);
       _selectedCategory = _dominantCategory(_items);
     } else if (widget.prefillTotal != null) {
       _amountCtrl.text = widget.prefillTotal!.toStringAsFixed(2);
@@ -802,7 +805,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
-                    child: Text('${item.quantity}x',
+                    child: Text(item.quantity == null ? '•' : '${item.quantity}x',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -814,11 +817,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         fontSize: 13, color: AppTheme.textPrimary)),
                 subtitle: CategoryBadge(category: item.category),
                 trailing: Text(
-                  'Rs ${item.totalPrice.toStringAsFixed(2)}',
+                  item.totalPrice == null
+                      ? '—'
+                      : 'Rs ${item.totalPrice!.toStringAsFixed(2)}',
                   style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: AppTheme.textPrimary),
+                      color: item.totalPrice == null
+                          ? AppTheme.textSecondary
+                          : AppTheme.textPrimary),
                 ),
               ),
             ],

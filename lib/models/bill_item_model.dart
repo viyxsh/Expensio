@@ -7,14 +7,19 @@ class BillItem extends HiveObject {
   @HiveField(0)
   String name;
 
+  /// Unit price as printed on the document. Null when the value is not
+  /// explicitly visible or cannot be reliably determined — never defaulted
+  /// to zero or inferred.
   @HiveField(1)
-  double price;
+  double? price;
 
   @HiveField(2)
   String category;
 
+  /// Quantity as printed on the document. Null when not explicitly shown;
+  /// line math treats a missing quantity as a single unit.
   @HiveField(3)
-  int quantity;
+  int? quantity;
 
   // Assigned user IDs (for item-level splitting)
   @HiveField(4)
@@ -22,20 +27,25 @@ class BillItem extends HiveObject {
 
   BillItem({
     required this.name,
-    required this.price,
+    this.price,
     required this.category,
-    this.quantity = 1,
+    this.quantity,
     List<String>? assignedUserIds,
   }) : assignedUserIds = assignedUserIds ?? [];
 
-  double get totalPrice => price * quantity;
+  /// Line total, or null when the price is unknown.
+  double? get totalPrice =>
+      price == null ? null : price! * (quantity ?? 1);
+
+  bool get hasPrice => price != null;
 
   factory BillItem.fromJson(Map<String, dynamic> json) {
     return BillItem(
       name: json['name']?.toString() ?? 'Unknown Item',
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      // Absent / illegible values stay null — no zero fallback.
+      price: (json['price'] as num?)?.toDouble(),
       category: json['category']?.toString() ?? 'General',
-      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      quantity: (json['quantity'] as num?)?.toInt(),
     );
   }
 

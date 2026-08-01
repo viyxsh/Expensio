@@ -117,6 +117,10 @@ class _BillScanScreenState extends State<BillScanScreen> {
   }
 
   String _friendlyError(String code) {
+    if (code.contains('not_a_receipt')) {
+      return 'This doesn\'t look like a receipt or bill. Scan a document that '
+          'records an actual purchase.';
+    }
     if (code.contains('auth_error') || code.contains('403')) {
       return 'AI service authentication failed. Check your API key.';
     }
@@ -141,9 +145,11 @@ class _BillScanScreenState extends State<BillScanScreen> {
   void _editItem(int index) {
     final item = _items[index];
     final nameCtrl = TextEditingController(text: item.name);
-    final priceCtrl =
-    TextEditingController(text: item.price.toStringAsFixed(2));
-    final qtyCtrl = TextEditingController(text: item.quantity.toString());
+    // Unknown values start empty — never as 0.
+    final priceCtrl = TextEditingController(
+        text: item.price?.toStringAsFixed(2) ?? '');
+    final qtyCtrl =
+        TextEditingController(text: item.quantity?.toString() ?? '');
     String selectedCat = _categories.contains(item.category)
         ? item.category
         : 'General';
@@ -187,7 +193,9 @@ class _BillScanScreenState extends State<BillScanScreen> {
                     child: TextField(
                       controller: priceCtrl,
                       decoration: const InputDecoration(
-                          labelText: 'Price', prefixText: 'Rs '),
+                          labelText: 'Price',
+                          prefixText: 'Rs ',
+                          hintText: 'Not on receipt'),
                       keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                     ),
@@ -222,10 +230,10 @@ class _BillScanScreenState extends State<BillScanScreen> {
                         name: nameCtrl.text.trim().isEmpty
                             ? item.name
                             : nameCtrl.text.trim(),
-                        price: double.tryParse(priceCtrl.text) ?? item.price,
+                        // Empty field = value unknown → stays null, not 0.
+                        price: double.tryParse(priceCtrl.text.trim()),
                         category: selectedCat,
-                        quantity:
-                        int.tryParse(qtyCtrl.text) ?? item.quantity,
+                        quantity: int.tryParse(qtyCtrl.text.trim()),
                       );
                     });
                     Navigator.pop(ctx);
@@ -241,13 +249,18 @@ class _BillScanScreenState extends State<BillScanScreen> {
   }
 
   void _addItem() {
-    _items.add(BillItem(name: 'New Item', price: 0, category: 'General'));
+    // New items start with unknown price/quantity — the user fills them in.
+    _items.add(BillItem(name: 'New Item', category: 'General'));
     _editItem(_items.length - 1);
   }
 
+  /// Sum of the line totals that are actually known. Items without a printed
+  /// price contribute nothing rather than a fabricated zero.
+  double get _knownTotal => _items.fold<double>(
+      0, (s, i) => s + (i.totalPrice ?? 0));
+
   void _proceedToAddExpense() {
-    final total =
-    _items.fold<double>(0, (s, i) => s + i.price * i.quantity);
+    final total = _knownTotal;
     final group = widget.group;
     Navigator.pushReplacement(
       context,
@@ -260,7 +273,9 @@ class _BillScanScreenState extends State<BillScanScreen> {
                 prefillTotal: total,
               )
             : AddPersonalExpenseScreen(
-                prefillTotalCents: Money.fromMajor(total),
+                // No known prices → leave the amount empty, not zero.
+                prefillTotalCents:
+                    total > 0 ? Money.fromMajor(total) : null,
               ),
       ),
     );
@@ -381,8 +396,9 @@ class _BillScanScreenState extends State<BillScanScreen> {
   }
 
   Widget _buildResult() {
-    final total =
-    _items.fold<double>(0, (s, i) => s + i.price * i.quantity);
+    final total = _knownTotal;
+    // Items whose price wasn't printed on the document.
+    final unknownCount = _items.where((i) => !i.hasPrice).length;
 
     return Column(
       children: [
@@ -409,12 +425,21 @@ class _BillScanScreenState extends State<BillScanScreen> {
                             fontSize: 13)),
                     const SizedBox(height: 4),
                     Text(
-                      'Total: Rs ${total.toStringAsFixed(2)}',
+                      total > 0
+                          ? 'Known total: Rs ${total.toStringAsFixed(2)}'
+                          : 'No readable prices',
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.primary),
                     ),
+                    if (unknownCount > 0)
+                      Text(
+                          '$unknownCount item${unknownCount == 1 ? '' : 's'} '
+                              'without a printed price — add them manually',
+                          style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12)),
                   ],
                 ),
               ),
@@ -605,7 +630,8 @@ class _ItemCard extends StatelessWidget {
           ),
           child: Center(
             child: Text(
-              '${item.quantity}x',
+              // No printed quantity → show a neutral dot, not an invented "1x".
+              item.quantity == null ? '•' : '${item.quantity}x',
               style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
@@ -621,9 +647,17 @@ class _ItemCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Rs ${item.totalPrice.toStringAsFixed(2)}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 14),
+              // Unknown price renders as an em dash, never 0.00.
+              item.totalPrice == null
+                  ? '—'
+                  : 'Rs ${item.totalPrice!.toStringAsFixed(2)}',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: item.totalPrice == null
+                      ? AppTheme.textSecondary
+                      : null,
+              ),
             ),
             const SizedBox(width: 6),
             PopupMenuButton<String>(
