@@ -43,19 +43,19 @@ class AppTheme {
 
   // Accent colours
   static const Map<String, Color> categoryColors = {
-    'Groceries':     Color(0xFF00E5BE),
-    'Food & Drink':  Color(0xFFFF7043),
-    'Electronics':   Color(0xFF448AFF),
-    'Clothing':      Color(0xFFE040FB),
-    'Transport':     Color(0xFF40C4FF),
-    'Health':        Color(0xFFFF5252),
-    'Entertainment': Color(0xFFFFD740),
-    'Utilities':     Color(0xFF90A4AE),
-    'General':       Color(0xFF78909C),
+    'General':       Color(0xFF7C6F64),
+    'Groceries':     Color(0xFF3FAE72),
+    'Food & Drink':  Color(0xFFE97856),
+    'Electronics':   Color(0xFF6C63A8),
+    'Clothing':      Color(0xFFC75C7A),
+    'Transport':     Color(0xFF3B8EA5),
+    'Health':        Color(0xFF4FA89A),
+    'Entertainment': Color(0xFFD89B3D),
+    'Utilities':     Color(0xFF5969A8),
   };
 
   static Color categoryColor(String category) =>
-      categoryColors[category] ?? const Color(0xFF78909C);
+      categoryColors[category] ?? const Color(0xFF7C6F64);
 
   // cardBg alias
   static Color get cardBg => surface;
