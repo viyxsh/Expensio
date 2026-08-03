@@ -527,32 +527,41 @@ class _ChartsSectionState extends State<_ChartsSection> {
           ),
           const SizedBox(height: 10),
 
-          // Summary row
-          Row(
+          // Summary: exact total on its own row, counts below.
+          Column(
             children: [
-              Expanded(
+              SizedBox(
+                width: double.infinity,
                 child: _SummaryTile(
                   label: 'Total Spent',
+                  // Exact amount, no compact "k" rounding.
                   value:
-                      '${AppSettings.currencySymbol} ${_compact(Money.toMajor(total))}',
+                      '${AppSettings.currencySymbol} ${Money.toMajor(total).toStringAsFixed(2)}',
                   icon: Icons.payments_outlined,
+                  alignment: CrossAxisAlignment.end,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _SummaryTile(
-                  label: 'Transactions',
-                  value: '${periodExpenses.length}',
-                  icon: Icons.receipt_outlined,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _SummaryTile(
-                  label: 'Categories',
-                  value: '${catTotals.length}',
-                  icon: Icons.category_outlined,
-                ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SummaryTile(
+                      label: 'Transactions',
+                      value: '${periodExpenses.length}',
+                      icon: Icons.receipt_outlined,
+                      alignment: CrossAxisAlignment.center,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _SummaryTile(
+                      label: 'Categories',
+                      value: '${catTotals.length}',
+                      icon: Icons.category_outlined,
+                      alignment: CrossAxisAlignment.center,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -851,8 +860,8 @@ class _InitialAvatar extends StatelessWidget {
   const _InitialAvatar({required this.name});
 
   static const _palette = [
-    Color(0xFF00E5BE), Color(0xFFFF7043), Color(0xFF448AFF),
-    Color(0xFFE040FB), Color(0xFF40C4FF), Color(0xFFFFD740),
+    Color(0xFF3FAE72), Color(0xFFE97856), Color(0xFF6C63A8),
+    Color(0xFFC75C7A), Color(0xFF3B8EA5), Color(0xFFD89B3D),
   ];
 
   @override
@@ -935,8 +944,14 @@ class _SummaryTile extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
+
+  /// Horizontal placement of the content within the box.
+  final CrossAxisAlignment alignment;
   const _SummaryTile(
-      {required this.label, required this.value, required this.icon});
+      {required this.label,
+      required this.value,
+      required this.icon,
+      this.alignment = CrossAxisAlignment.start});
 
   @override
   Widget build(BuildContext context) {
@@ -948,22 +963,30 @@ class _SummaryTile extends StatelessWidget {
         border: Border.all(color: AppTheme.divider),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: alignment,
         children: [
-          Icon(icon, size: 16, color: AppTheme.textSecondary),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: AppTheme.textSecondary),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 10, color: AppTheme.textSecondary)),
+            ],
+          ),
           const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
+            alignment: alignment == CrossAxisAlignment.end
+                ? Alignment.centerRight
+                : Alignment.center,
             child: Text(value,
                 style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary)),
           ),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 10, color: AppTheme.textSecondary)),
         ],
       ),
     );
