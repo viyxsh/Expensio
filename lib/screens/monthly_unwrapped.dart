@@ -372,10 +372,11 @@ class _MonthlyUnwrappedScreenState extends State<MonthlyUnwrappedScreen> {
             ),
           ),
           if (_page < slides.length - 1)
-            const Positioned(
+            Positioned(
               right: 20,
-              bottom: 28,
-              child: _Pulse(
+              // Clear the phone's navigation bar instead of a fixed offset.
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+              child: const _Pulse(
                 child: Row(
                   children: [
                     Text('Swipe',
