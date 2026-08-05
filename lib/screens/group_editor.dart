@@ -172,8 +172,14 @@ class _GroupEditorSheetState extends State<_GroupEditorSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
+      // Keyboard inset + system navigation bar, so the save button clears both.
       padding: EdgeInsets.fromLTRB(
-          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+          20,
+          12,
+          20,
+          MediaQuery.of(context).viewInsets.bottom +
+              MediaQuery.of(context).padding.bottom +
+              20),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
