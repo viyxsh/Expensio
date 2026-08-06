@@ -119,34 +119,31 @@ class _AddPersonalExpenseScreenState
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Amount 
+            // Amount
+            const SectionHeader(title: 'Amount'),
+            const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppTheme.divider),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Text('Amount',
+                  Text('${AppSettings.currencySymbol} ',
                       style: TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 12)),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text('Rs ',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w500)),
+                          color: AppTheme.textSecondary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w500)),
                       Expanded(
                         child: TextFormField(
                           controller: _amountCtrl,
@@ -157,9 +154,17 @@ class _AddPersonalExpenseScreenState
                             fontSize: 40,
                             fontWeight: FontWeight.w700,
                           ),
-                          decoration: const InputDecoration(
+                          // Hint matches the input's scale so it doesn't
+                          // look lost inside the tall box.
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             hintText: '0',
+                            hintStyle: TextStyle(
+                              color: AppTheme.textSecondary
+                                  .withValues(alpha: 0.55),
+                              fontSize: 40,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) return 'Enter amount';
@@ -173,16 +178,16 @@ class _AddPersonalExpenseScreenState
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
             const SizedBox(height: 16),
 
-            // Description 
+            // Description
+            const SectionHeader(title: 'Description'),
+            const SizedBox(height: 4),
             TextFormField(
               controller: _titleCtrl,
               decoration: const InputDecoration(
-                labelText: 'Description',
+                hintText: 'Enter Title',
                 prefixIcon: Icon(Icons.edit_outlined),
               ),
               validator: (v) =>
@@ -250,6 +255,7 @@ class _AddPersonalExpenseScreenState
               ),
             ),
           ],
+        ),
         ),
       ),
     );
