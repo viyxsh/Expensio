@@ -328,67 +328,126 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             // Title
+            const SectionHeader(title: 'Expense Title'),
+            const SizedBox(height: 4),
             TextFormField(
               controller: _titleCtrl,
               decoration: const InputDecoration(
-                labelText: 'Expense Title',
-                hintText: 'e.g. Dinner, Movie tickets',
+                hintText: 'Enter Title',
+                prefixIcon: Icon(Icons.edit_outlined),
               ),
               textCapitalization: TextCapitalization.sentences,
               validator: (v) =>
               (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             // Amount
-            TextFormField(
-              controller: _amountCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Total Amount',
-                prefixText: 'Rs ',
+            const SectionHeader(title: 'Total Amount'),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.divider),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (_) => setState(() {
-                if (!_splitEqually) _syncUnlocked();
-              }),
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Required';
-                if (double.tryParse(v) == null || double.parse(v) <= 0) {
-                  return 'Invalid amount';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Category
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              dropdownColor: AppTheme.surfaceHigh,
-              decoration: const InputDecoration(labelText: 'Category'),
-              items: _categories
-                  .map((c) => DropdownMenuItem(
-                value: c,
-                child: Row(children: [
-                  Container(
-                    width: 10, height: 10,
-                    margin: const EdgeInsets.only(right: 10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.categoryColor(c),
-                      shape: BoxShape.circle,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  // Follows the selected reporting currency.
+                  Text('${AppSettings.currencySymbol} ',
+                      style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w500)),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _amountCtrl,
+                      keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      // Hint matches the input's scale so it doesn't
+                      // look lost inside the tall box.
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: '0',
+                        hintStyle: TextStyle(
+                          color: AppTheme.textSecondary
+                              .withValues(alpha: 0.55),
+                          fontSize: 40,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {
+                        if (!_splitEqually) _syncUnlocked();
+                      }),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Required';
+                        if (double.tryParse(v) == null ||
+                            double.parse(v) <= 0) {
+                          return 'Invalid amount';
+                        }
+                        return null;
+                      },
                     ),
                   ),
-                  Text(c),
-                ]),
-              ))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedCategory = v!),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Category
+            const SectionHeader(title: 'Category'),
+            const SizedBox(height: 8),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              childAspectRatio: 2.5,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              children: _categories.map((c) {
+                final selected = c == _selectedCategory;
+                final color = AppTheme.categoryColor(c);
+
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedCategory = c),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? color.withOpacity(0.15)
+                          : AppTheme.surfaceMid,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected ? color : AppTheme.divider,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        c,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? color : AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 16),
 
@@ -461,6 +520,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
             const SizedBox(height: 40),
           ],
+        ),
         ),
       ),
     );
@@ -696,7 +756,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              isPct ? '%' : 'Rs',
+                              isPct ? '%' : AppSettings.currencySymbol,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -819,7 +879,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 trailing: Text(
                   item.totalPrice == null
                       ? '—'
-                      : 'Rs ${item.totalPrice!.toStringAsFixed(2)}',
+                      : '${AppSettings.currencySymbol} ${item.totalPrice!.toStringAsFixed(2)}',
                   style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
