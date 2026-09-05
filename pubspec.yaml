@@ -48,7 +48,7 @@ dependencies:
 
   # Invite QR codes (show + scan) and deep-link join
   qr_flutter: ^4.1.0
-  mobile_scanner: ^5.2.3
+  mobile_scanner: ^7.4.0
   app_links: ^6.3.2
 
   # Environment variables
@@ -56,6 +56,7 @@ dependencies:
 
   # UI
   cupertino_icons: ^1.0.6
+  lottie: ^3.3.1
   intl: ^0.19.0
   google_fonts: ^6.2.1
   fl_chart: ^0.69.0
@@ -80,3 +81,4 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/animation.json

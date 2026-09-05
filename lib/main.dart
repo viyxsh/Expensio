@@ -15,7 +15,7 @@ import 'services/services.dart';
 import 'services/session_controller.dart';
 import 'state/app_state.dart';
 import 'screens/join_flow.dart';
-import 'screens/main_shell.dart';
+import 'screens/splash_screen.dart';
 import 'utils/app_theme.dart';
 
 void main() async {
@@ -143,7 +143,7 @@ class _ExpensioAppState extends State<ExpensioApp>
           // Non-const so the whole tree rebuilds when the theme changes — the
           // app reads AppTheme colour getters directly (not Theme.of(context)),
           // so it needs an explicit rebuild to repaint with the new palette.
-          home: MainShell(), // ignore: prefer_const_constructors
+          home: const SplashScreen(),
         );
       },
     );
