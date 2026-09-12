@@ -30,11 +30,6 @@ class _AddPersonalExpenseScreenState
 
   bool get _isEdit => widget.expense != null;
 
-  static const List<String> _categories = [
-    'General', 'Groceries', 'Food & Drink', 'Electronics', 'Clothing',
-    'Transport', 'Health', 'Entertainment', 'Utilities',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -108,7 +103,7 @@ class _AddPersonalExpenseScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bg,
+      backgroundColor: AppTheme.categoryTintedBg(_category),
       appBar: AppBar(
         title: Text(_isEdit ? 'Edit Transaction' : 'New Transaction'),
         actions: [
@@ -206,42 +201,9 @@ class _AddPersonalExpenseScreenState
             // Category 
             const SectionHeader(title: 'Category'),
             const SizedBox(height: 8),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              childAspectRatio: 2.5,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              children: _categories.map((c) {
-                final selected = c == _category;
-                final color = AppTheme.categoryColor(c);
-
-                return GestureDetector(
-                  onTap: () => setState(() => _category = c),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? color.withOpacity(0.15)
-                          : AppTheme.surfaceMid,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: selected ? color : AppTheme.divider,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        c,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: selected ? color : AppTheme.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+            CategoryGrid(
+              selected: _category,
+              onChanged: (c) => setState(() => _category = c),
             ),
             const SizedBox(height: 32),
 

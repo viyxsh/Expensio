@@ -143,18 +143,19 @@ class _GroupsScreenState extends State<GroupsScreen> {
           ),
         ],
       ),
-      body: ListenableBuilder(
-        listenable: Services.state,
-        builder: (context, _) {
-          final groups = Services.state.groups.reversed.toList();
-          if (groups.isEmpty) return _buildEmpty();
+      body: SafeArea(
+        child: ListenableBuilder(
+          listenable: Services.state,
+          builder: (context, _) {
+            final groups = Services.state.groups.reversed.toList();
+            if (groups.isEmpty) return _buildEmpty();
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-            itemCount: groups.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, i) {
-              final g = groups[i];
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+              itemCount: groups.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, i) {
+                final g = groups[i];
               final expenses = Services.state.getExpensesByGroup(g.id);
               final total = expenses
                   .where((e) => !e.isPersonal)
@@ -182,7 +183,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
               );
             },
           );
-        },
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showGroupEditor(context),

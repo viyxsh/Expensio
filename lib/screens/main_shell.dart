@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_theme.dart';
+import 'ask_screen.dart';
 import 'transactions_screen.dart';
 import 'groups_screen.dart';
 import 'more_screen.dart';
@@ -26,6 +27,7 @@ class _MainShellState extends State<MainShell> {
     final screens = [
       TransactionsScreen(), // ignore: prefer_const_constructors
       GroupsScreen(), // ignore: prefer_const_constructors
+      AskScreen(), // ignore: prefer_const_constructors
       MoreScreen(onSelectTab: _selectTab),
     ];
     return Scaffold(
@@ -59,9 +61,15 @@ class _MainShellState extends State<MainShell> {
               label: 'Groups',
             ),
             NavigationDestination(
+              icon: const Icon(Icons.auto_awesome_outlined),
+              selectedIcon:
+                  Icon(Icons.auto_awesome, color: AppTheme.primary),
+              label: 'Ask',
+            ),
+            NavigationDestination(
               icon: const Icon(Icons.more_horiz_outlined),
               selectedIcon:
-              Icon(Icons.more_horiz, color: AppTheme.primary),
+                  Icon(Icons.more_horiz, color: AppTheme.primary),
               label: 'More',
             ),
           ],

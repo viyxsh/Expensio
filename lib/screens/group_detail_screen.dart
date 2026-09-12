@@ -466,23 +466,22 @@ class _EmptyExpenses extends StatelessWidget {
   const _EmptyExpenses();
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined,
-              size: 48, color: AppTheme.surfaceHigh),
-          const SizedBox(height: 12),
-          Text('No expenses yet',
-              style: TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
-          const SizedBox(height: 6),
-          Text(
-            'Add an expense or scan a bill\nto get started',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-          ),
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.receipt_long_outlined,
+            size: 48, color: AppTheme.surfaceHigh),
+        const SizedBox(height: 12),
+        Text('No expenses yet',
+            style: TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
+        const SizedBox(height: 6),
+        Text(
+          'Add an expense or scan a bill\nto get started',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+        ),
+      ],
     );
   }
 }

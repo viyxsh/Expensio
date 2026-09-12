@@ -318,6 +318,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:
+          AppTheme.categoryTintedBg(_selectedCategory),
       appBar: AppBar(
         title: Text(widget.existing != null ? 'Edit Expense' : 'Add Expense'),
         actions: [
@@ -412,42 +414,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             // Category
             const SectionHeader(title: 'Category'),
             const SizedBox(height: 8),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              childAspectRatio: 2.5,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              children: _categories.map((c) {
-                final selected = c == _selectedCategory;
-                final color = AppTheme.categoryColor(c);
-
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedCategory = c),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? color.withOpacity(0.15)
-                          : AppTheme.surfaceMid,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: selected ? color : AppTheme.divider,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        c,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: selected ? color : AppTheme.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+            CategoryGrid(
+              selected: _selectedCategory,
+              onChanged: (c) => setState(() => _selectedCategory = c),
             ),
             const SizedBox(height: 16),
 

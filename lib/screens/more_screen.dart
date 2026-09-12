@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../data/balances.dart';
 import '../models/expense_model.dart';
 import '../services/app_settings.dart';
 import '../services/auth_service.dart';
@@ -463,13 +464,16 @@ class _MoreScreenState extends State<MoreScreen> {
               final allExpenses = Services.state.getAllExpenses();
               final allGroups = Services.state.getAllGroups();
 
-              // Current month total
+              // Current month total — same "your spending" semantics as the
+              // transactions page: your share, or the full amount when you
+              // paid, converted into the reporting currency.
               final now = DateTime.now();
+              final uid = Services.currentUserId;
               final monthStart = DateTime(now.year, now.month);
               final monthTotal = allExpenses
                   .where((e) => !e.createdAt.isBefore(monthStart))
-                  .fold<int>(0,
-                      (s, e) => s + Money.convert(e.totalAmount, e.currencyCode));
+                  .fold<int>(0, (s, e) =>
+                      s + Money.convert(userAmountOf(e, uid), e.currencyCode));
 
               final sym = AppSettings.currencySymbol;
               final currencyName = AppSettings.currencyName;

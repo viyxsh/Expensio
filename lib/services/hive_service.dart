@@ -6,6 +6,8 @@ import '../models/expense_model.dart';
 import '../models/bill_item_model.dart';
 import '../models/settlement_model.dart';
 import '../data/balances.dart';
+import 'ask_chat_store.dart';
+import 'category_store.dart';
 
 class HiveService {
   static const String _usersBox = 'users';
@@ -29,6 +31,8 @@ class HiveService {
     await Hive.openBox<ExpenseModel>(_expensesBox);
     await Hive.openBox<SettlementModel>(_settlementsBox);
     await Hive.openBox('settings');
+    await AskChatStore.init();
+    await CategoryStore.init();
   }
 
   // Users 

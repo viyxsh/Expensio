@@ -53,3 +53,7 @@ android/local.properties
 # iOS CocoaPods (generated, not needed in repo)
 ios/Pods/
 .claude/
+
+# Local build artifacts and editor config
+android/build/
+.vscode/
